@@ -1,0 +1,45 @@
+# Simple Plymouth theme: background + centered logo only
+
+# Fallback background color (in case image fails)
+Window.SetBackgroundTopColor (0.0, 0.0, 0.0);
+Window.SetBackgroundBottomColor (0.0, 0.0, 0.0);
+
+# Optional rotation (0 normal, 180 if flipped display)
+rotate_degrees = 0.0;
+Window.SetRotation(rotate_degrees);
+
+# Load images (make sure these exist in ImageDir)
+bg = Image("background.png");
+logo = Image("logo.png");
+
+# Get display size
+w = Window.GetWidth();
+h = Window.GetHeight();
+
+# Draw background (centered & scaled to cover screen)
+if (bg) {
+    bgw = bg.GetWidth();
+    bgh = bg.GetHeight();
+    scale = max(w / bgw, h / bgh);
+    sprite_bg = Sprite(bg);
+    sprite_bg.SetScale(scale, scale);
+    sprite_bg.SetX(w / 2 - (bgw * scale) / 2);
+    sprite_bg.SetY(h / 2 - (bgh * scale) / 2);
+    sprite_bg.SetZ(-100); # ensure background stays behind logo
+}
+
+# Draw logo (centered)
+if (logo) {
+    lw = logo.GetWidth();
+    lh = logo.GetHeight();
+    sprite_logo = Sprite(logo);
+    sprite_logo.SetX(w / 2 - lw / 2);
+    sprite_logo.SetY(h / 2 - lh / 2);
+}
+
+# Optional pause before fade-out
+Plymouth.SystemSleep(3);
+
+# Optional fade-out
+sprite_logo.FadeOut(1000);
+Plymouth.SystemSleep(1);
