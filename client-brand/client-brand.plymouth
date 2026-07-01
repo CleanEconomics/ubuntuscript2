@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Client Brand Splash
+Description=Custom boot splash for client
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/client-brand
+ScriptFile=/usr/share/plymouth/themes/client-brand/client-brand.script
