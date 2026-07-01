@@ -27,19 +27,20 @@ chmod +x setup.sh
 | `05_wallpaper.sh` | Client wallpaper |
 | `06_plymouth.sh` | Client Plymouth boot splash |
 | `07_anydesk_install.sh` | RustDesk remote support (Wayland enabled) |
-| `08_kiosk.sh` | Boot into a full-screen Chromium kiosk |
+| `08_kiosk.sh` | Boot into a full-screen Google Chrome kiosk |
 | `99_finish.sh` | Version summary |
 
 ## Kiosk mode (`08_kiosk.sh`)
 
-Enables GDM auto-login for the GUI user and launches Chromium in `--kiosk`
+Enables GDM auto-login for the GUI user and launches Google Chrome in `--kiosk`
 mode on login, inside the existing GNOME/Wayland session.
 
 - **Default URL:** the Node-RED dashboard at `http://localhost:1880/ui`
   (falls back to `http://localhost:1880` while the app is still starting).
 - Disables screen blanking, locking, and auto-suspend.
-- Hides the mouse pointer when idle and suppresses Chromium's crash-restore prompt.
-- Installs Chromium automatically (apt wrapper or snap) if not present.
+- Hides the mouse pointer when idle and suppresses Chrome's crash-restore prompt.
+- Installs Google Chrome automatically (Google's apt repo, with a direct `.deb`
+  fallback) if not present.
 
 Override the target URL or user when running the script directly:
 
