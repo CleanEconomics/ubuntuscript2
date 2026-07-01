@@ -35,8 +35,7 @@ chmod +x setup.sh
 Enables GDM auto-login for the GUI user and launches Google Chrome in `--kiosk`
 mode on login, inside the existing GNOME/Wayland session.
 
-- **Default URL:** the Node-RED dashboard at `http://localhost:1880/ui`
-  (falls back to `http://localhost:1880` while the app is still starting).
+- **Default URL:** the appliance UI at `http://192.168.1.17`.
 - Disables screen blanking, locking, and auto-suspend.
 - Hides the mouse pointer when idle and suppresses Chrome's crash-restore prompt.
 - Installs Google Chrome automatically (Google's apt repo, with a direct `.deb`
@@ -45,8 +44,8 @@ mode on login, inside the existing GNOME/Wayland session.
 Override the target URL or user when running the script directly:
 
 ```bash
-KIOSK_URL="http://localhost:1880/ui" ./scripts/08_kiosk.sh
-KIOSK_USER="operator"                ./scripts/08_kiosk.sh
+KIOSK_URL="http://192.168.1.17" ./scripts/08_kiosk.sh
+KIOSK_USER="operator"           ./scripts/08_kiosk.sh
 ```
 
 Reboot to enter kiosk mode:

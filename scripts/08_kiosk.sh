@@ -8,16 +8,16 @@ set -euo pipefail
 # in --kiosk mode pointed at KIOSK_URL. Designed to run inside the existing GNOME
 # (Wayland) session set up by the other scripts in this repo.
 #
-# Defaults point at the Node-RED dashboard installed by 02_node_stack.sh.
+# Defaults point at the appliance UI at http://192.168.1.17.
 #
 # Override at run time (any of these):
-#   KIOSK_URL="http://localhost:1880/ui"  ./08_kiosk.sh
-#   KIOSK_USER="operator"                 ./08_kiosk.sh
+#   KIOSK_URL="http://192.168.1.17"  ./08_kiosk.sh
+#   KIOSK_USER="operator"            ./08_kiosk.sh
 # ---------------------------------------------------------------------------
 
 # --- Config -----------------------------------------------------------------
-KIOSK_URL="${KIOSK_URL:-http://localhost:1880/ui}"
-KIOSK_FALLBACK_URL="${KIOSK_FALLBACK_URL:-http://localhost:1880}"
+KIOSK_URL="${KIOSK_URL:-http://192.168.1.17}"
+KIOSK_FALLBACK_URL="${KIOSK_FALLBACK_URL:-http://192.168.1.17}"
 KIOSK_DIR="/opt/kiosk"
 START_SCRIPT="$KIOSK_DIR/start-kiosk.sh"
 
