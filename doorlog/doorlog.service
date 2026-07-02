@@ -1,0 +1,16 @@
+[Unit]
+Description=Door Event History Logger
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=doorlog
+Group=doorlog
+WorkingDirectory=/opt/doorlog
+ExecStart=/opt/doorlog/venv/bin/python -m doorlog --config /etc/doorlog/config.yaml
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

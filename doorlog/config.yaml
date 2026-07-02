@@ -1,0 +1,40 @@
+# Door Event History Logger — /etc/doorlog/config.yaml
+# All keys optional; defaults shown. Spec §7.
+
+plc_host: 192.168.1.17
+plc_port: 502
+unit_id: 1                      # Modbus slave/unit id — confirm on the PLC
+
+reg_base: 0                     # BASE of the mirrored register block (spec §3)
+word_order_high_first: true     # DWORD word order — verify on-site (spec §5.3a):
+                                # if timestamps decode to year 1970/2100+, flip this.
+
+poll_interval_sec: 3
+n_doors: 50
+max_events: 10                  # ring depth on the PLC
+
+db_path: /var/lib/doorlog/doorlog.db
+
+# Door numbering from the HMI: 1-25 Receiving, 26-50 Shipping.
+door_labels:
+  receiving_prefix: "R-"
+  shipping_prefix: "S-"
+  split_at: 26
+  overrides: {}                 # e.g. {7: "DOCK-7"}
+
+# Keep labels identical to the HMI (spec §4). Unknown codes are stored
+# as UNKNOWN(<n>) and logged once.
+event_labels:
+  1: "OPEN"
+  2: "CLOSED & LOCKED"
+  3: "ALARM (timeout)"
+  4: "ALARM (tamper)"
+
+reconnect_backoff_sec: [1, 2, 5, 10, 30]   # capped at the last value
+
+# Retention is unbounded by default. Set >0 to enable a daily prune of rows
+# older than N years (spec §8 — documented, disabled).
+retention_years: 0
+
+log_level: INFO
+log_path: /var/log/doorlog/doorlog.log
