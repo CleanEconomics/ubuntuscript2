@@ -10,6 +10,12 @@ set -euo pipefail
 #
 # Defaults point at the appliance UI at http://192.168.1.17.
 #
+# Boot is fully unattended: GDM auto-login plus a blank login keyring, so no
+# password prompt ever appears. Self-signed certificates on the target URL are
+# accepted automatically (no "Your connection is not private" interstitial).
+# Files downloaded from the portal (e.g. CSV exports) are saved silently to
+# ~/kiosk-data without a save dialog.
+#
 # Override at run time (any of these):
 #   KIOSK_URL="http://192.168.1.17"  ./08_kiosk.sh
 #   KIOSK_USER="operator"            ./08_kiosk.sh
@@ -103,6 +109,25 @@ fi
 BROWSER_BIN="${BROWSER_BIN:-google-chrome-stable}"
 echo "🌐 Using browser: $BROWSER_BIN"
 
+# --- Managed policy: save downloads (CSV exports) silently to ~/kiosk-data ---
+# PromptForDownloadLocation=false kills the "Save As" dialog, so an export
+# button in the web portal writes straight to disk. Policy dirs cover Chrome
+# and both Chromium (deb/snap) layouts.
+echo "📁 Configuring silent downloads to ~/kiosk-data..."
+for PDIR in /etc/opt/chrome/policies/managed \
+            /etc/chromium/policies/managed \
+            /etc/chromium-browser/policies/managed; do
+  mkdir -p "$PDIR"
+  cat > "$PDIR/kiosk-downloads.json" <<EOF
+{
+  "DownloadDirectory": "\${user_home}/kiosk-data",
+  "PromptForDownloadLocation": false,
+  "DefaultBrowserSettingEnabled": false
+}
+EOF
+done
+sudo -u "$KIOSK_USER" mkdir -p "$USER_HOME/kiosk-data"
+
 # --- Enable GDM auto-login for the kiosk user -------------------------------
 GDM_CONF="/etc/gdm3/custom.conf"
 if [[ -f "$GDM_CONF" ]]; then
@@ -114,6 +139,32 @@ if [[ -f "$GDM_CONF" ]]; then
   echo "✅ Auto-login enabled."
 else
   echo "⚠️  $GDM_CONF not found — is GNOME/GDM installed? Auto-login not configured."
+fi
+
+# --- Kill the keyring password prompt ----------------------------------------
+# Auto-login never types a password, so the GNOME login keyring stays locked
+# and the first app to touch it (Chrome) pops an "unlock your login keyring"
+# password dialog. Two-part fix: give the kiosk user a blank (plaintext) login
+# keyring if none exists, and launch Chrome with --password-store=basic so it
+# never touches the keyring at all.
+KEYRING_DIR="$USER_HOME/.local/share/keyrings"
+if [[ ! -f "$KEYRING_DIR/login.keyring" ]]; then
+  echo "🔓 Creating blank login keyring (no unlock prompt on boot)..."
+  sudo -u "$KIOSK_USER" mkdir -p "$KEYRING_DIR"
+  cat > "$KEYRING_DIR/login.keyring" <<'EOF'
+[keyring]
+display-name=login
+ctime=0
+mtime=0
+lock-on-idle=false
+lock-after=false
+EOF
+  printf 'login' > "$KEYRING_DIR/default"
+  chown "$KIOSK_USER":"$KIOSK_USER" "$KEYRING_DIR/login.keyring" "$KEYRING_DIR/default"
+  chmod 700 "$KEYRING_DIR"
+  chmod 600 "$KEYRING_DIR/login.keyring"
+else
+  echo "ℹ️  Existing login keyring found — leaving it alone (Chrome bypasses it anyway)."
 fi
 
 # --- Write the kiosk launcher ----------------------------------------------
@@ -128,6 +179,10 @@ URL="\${KIOSK_URL:-$KIOSK_URL}"
 FALLBACK="\${KIOSK_FALLBACK_URL:-$KIOSK_FALLBACK_URL}"
 BROWSER="$BROWSER_BIN"
 PROFILE="\$HOME/.config/kiosk-chrome"
+
+# CSV exports / downloads from the portal land here (managed policy points
+# Chrome at this folder with no save dialog).
+mkdir -p "\$HOME/kiosk-data"
 
 # --- Keep the screen awake (GNOME) ---
 if command -v gsettings >/dev/null 2>&1; then
@@ -158,10 +213,11 @@ if [ -f "\$PREF" ]; then
 fi
 
 # --- Wait for the target URL, fall back if the app isn't up yet ---
+# -k: accept self-signed certs so the readiness check matches the browser.
 TARGET="\$URL"
 for _ in \$(seq 1 30); do
-  if curl -fsS --max-time 2 "\$URL" >/dev/null 2>&1; then TARGET="\$URL"; break; fi
-  if curl -fsS --max-time 2 "\$FALLBACK" >/dev/null 2>&1; then TARGET="\$FALLBACK"; fi
+  if curl -fsSk --max-time 2 "\$URL" >/dev/null 2>&1; then TARGET="\$URL"; break; fi
+  if curl -fsSk --max-time 2 "\$FALLBACK" >/dev/null 2>&1; then TARGET="\$FALLBACK"; fi
   sleep 2
 done
 
@@ -171,6 +227,10 @@ if [ "\${XDG_SESSION_TYPE:-}" = "wayland" ]; then
   OZONE="--ozone-platform=wayland --enable-features=UseOzonePlatform"
 fi
 
+# --password-store=basic      : never touch the GNOME keyring (no password prompt)
+# --ignore-certificate-errors : accept the appliance's self-signed cert (no
+#                               "Your connection is not private" interstitial)
+# --test-type                 : suppress the warning bar those flags would show
 exec "\$BROWSER" \\
   --user-data-dir="\$PROFILE" \\
   --kiosk "\$TARGET" \\
@@ -184,6 +244,9 @@ exec "\$BROWSER" \\
   --disable-pinch \\
   --overscroll-history-navigation=0 \\
   --check-for-update-interval=31536000 \\
+  --password-store=basic \\
+  --ignore-certificate-errors \\
+  --test-type \\
   --incognito \\
   \$OZONE
 EOF
