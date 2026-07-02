@@ -36,6 +36,16 @@ Enables GDM auto-login for the GUI user and launches Google Chrome in `--kiosk`
 mode on login, inside the existing GNOME/Wayland session.
 
 - **Default URL:** the appliance UI at `http://192.168.1.17`.
+- **No password prompts.** Auto-login is enabled and the GNOME login keyring is
+  created blank (Chrome is also launched with `--password-store=basic`), so the
+  "unlock your login keyring" dialog never appears.
+- **No certificate warning.** Self-signed certificates on the target URL are
+  accepted automatically (`--ignore-certificate-errors`) — the browser goes
+  straight to the app, no "Your connection is not private" approve screen.
+- **CSV / file exports save to `~/kiosk-data`.** A managed browser policy sets
+  the download folder and disables the "Save As" dialog, so an export button in
+  the web portal writes the file straight to
+  `/home/<kiosk-user>/kiosk-data/` on the machine.
 - Disables screen blanking, locking, and auto-suspend.
 - Hides the mouse pointer when idle and suppresses Chrome's crash-restore prompt.
 - Installs Google Chrome automatically (Google's apt repo, with a direct `.deb`
