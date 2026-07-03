@@ -240,9 +240,11 @@ for _ in \$(seq 1 30); do
 done
 
 # --- Prefer native Wayland when the session is Wayland ---
+# The IME flags make Chrome tell GNOME when a text field has focus, which is
+# what pops the on-screen touch keyboard on tablets.
 OZONE=""
 if [ "\${XDG_SESSION_TYPE:-}" = "wayland" ]; then
-  OZONE="--ozone-platform=wayland --enable-features=UseOzonePlatform"
+  OZONE="--ozone-platform=wayland --enable-features=UseOzonePlatform --enable-wayland-ime --wayland-text-input-version=3"
 fi
 
 # --password-store=basic      : never touch the GNOME keyring (no password prompt)
