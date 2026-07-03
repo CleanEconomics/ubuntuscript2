@@ -119,6 +119,11 @@ class Poller:
 
     def run(self):
         cfg = self.cfg
+        if not cfg.plc_host or cfg.plc_host == "CHANGEME":
+            log.error(
+                "plc_host is not configured — set it in /etc/doorlog/config.yaml "
+                "(or re-run 09_doorlog.sh with PLC_HOST=<plc-ip>); retrying with backoff"
+            )
         self.last_seq = self.store.high_water()
         log.info(
             "starting: plc=%s:%d unit=%d base=%d poll=%.1fs doors=%d db=%s (%d rows, %d doors resumed)",

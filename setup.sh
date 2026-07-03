@@ -5,6 +5,20 @@ REPO="CleanEconomics/ubuntuscript2"
 BRANCH="main"
 RAW_BASE="https://raw.githubusercontent.com/$REPO/$BRANCH"
 
+# --- Require the kiosk target up front (nothing is hardcoded) -----------------
+#   APPLIANCE_URL='http://host:port/path'  -> what the kiosk opens
+#   APPLIANCE_IP=192.168.1.50              -> shorthand for http://<ip>
+#   PLC_HOST=192.168.1.17                  -> Modbus PLC for the door logger
+#                                             (defaults to APPLIANCE_IP if set)
+if [[ -z "${APPLIANCE_URL:-}" && -z "${APPLIANCE_IP:-}" && -z "${KIOSK_URL:-}" ]]; then
+  echo "❌ No kiosk target set — nothing is hardcoded, you must pass one:"
+  echo "   sudo APPLIANCE_URL='http://74.208.61.41:3005/login' PLC_HOST=192.168.1.17 bash $0"
+  echo "   sudo APPLIANCE_IP=192.168.1.50 bash $0"
+  exit 1
+fi
+TARGET_DISPLAY="${KIOSK_URL:-${APPLIANCE_URL:-http://$APPLIANCE_IP}}"
+export APPLIANCE_URL APPLIANCE_IP KIOSK_URL PLC_HOST 2>/dev/null || true
+
 # --------------------------------------------
 # Detect parent run directory (from install.sh)
 # --------------------------------------------
@@ -28,6 +42,8 @@ echo "==============================="
 # --------------------------------------------
 # Function to fetch and execute a script from GitHub
 # --------------------------------------------
+FAILED_SCRIPTS=()
+
 run_remote_script() {
   local script_name="$1"
   local url="$RAW_BASE/scripts/$script_name"
@@ -39,13 +55,21 @@ run_remote_script() {
   echo "▶️  Running $script_name ..."
   echo "📄 Logging to: $script_log"
 
+  # One failing step must NOT abort the provision — record it, keep going,
+  # and report at the end.
+  local status=0
   {
     echo "===== START $script_name $(date) ====="
-    curl -fsSL "$url" | bash
-    echo "===== END $script_name $(date) ====="
+    curl -fsSL "$url" | bash || status=$?
+    echo "===== END $script_name $(date) (exit $status) ====="
   } > >(tee -a "$script_log" "$LOG_FILE") 2>&1
 
-  echo "✅ Finished $script_name"
+  if [[ $status -ne 0 ]]; then
+    FAILED_SCRIPTS+=("$script_name")
+    echo "⚠️  $script_name FAILED (exit $status) — continuing with remaining steps"
+  else
+    echo "✅ Finished $script_name"
+  fi
   echo ""
 }
 
@@ -60,6 +84,13 @@ for script in $SCRIPT_LIST; do
 done
 
 echo "==============================="
-echo "🎯 Setup complete!"
+if [[ ${#FAILED_SCRIPTS[@]} -gt 0 ]]; then
+  echo "⚠️  Setup finished with FAILURES: ${FAILED_SCRIPTS[*]}"
+  echo "   Re-run a failed step with:"
+  echo "   curl -fsSL $RAW_BASE/scripts/<name> | sudo APPLIANCE_URL='$TARGET_DISPLAY' bash"
+else
+  echo "🎯 Setup complete!"
+fi
+echo "Kiosk URL: $TARGET_DISPLAY"
 echo "Logs saved to: $LOG_DIR"
 echo "==============================="

@@ -4,34 +4,48 @@ Installs Node.js, React, Node-RED, Python, Docker, and Beremiz on fresh Ubuntu,
 applies client branding (wallpaper + Plymouth boot splash), installs RustDesk for
 remote support, and boots the machine into a full-screen **kiosk**.
 
-## Install
+## Install (IPC — full stack)
 
-One block — change only the `IP=` line (the appliance/PLC address), paste the rest as-is:
+Nothing is hardcoded — you pass the kiosk URL (and PLC address, if using the
+door logger) on the command line. Change only the first two lines:
 
 ```bash
-IP=192.168.1.17   # <-- change this and nothing else
+URL='http://74.208.61.41:3005/login?callbackUrl=%2Fadmin'   # <-- kiosk target
+PLC=192.168.1.17                                            # <-- Modbus PLC (door logger)
 sudo apt update && sudo apt install -y curl && \
 curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/setup.sh -o setup.sh && \
 chmod +x setup.sh && \
-sudo APPLIANCE_IP=$IP ./setup.sh && \
+sudo APPLIANCE_URL="$URL" PLC_HOST="$PLC" ./setup.sh && \
 sudo reboot
 ```
 
-`setup.sh` fetches every numbered script in `scripts/` and runs them in order.
-`APPLIANCE_IP` sets both the kiosk URL (`08_kiosk.sh`) and the door-logger PLC
-host (`09_doorlog.sh`); if omitted, both default to `192.168.1.17`.
+`setup.sh` fetches every numbered script in `scripts/` and runs them in order;
+a failing step is reported and skipped, never silently aborting the rest.
+`APPLIANCE_URL` is what the kiosk opens (full URL — port, path, query all
+fine). `APPLIANCE_IP=<ip>` is accepted as shorthand for `http://<ip>`.
 
 ## Tablet install (kiosk viewer only)
 
 For Linux tablets that just display the portal — no Node-RED/Docker/Beremiz,
-no door logger (that stays on the IPC). Same rule: change only the `IP=` line.
+no door logger (that stays on the IPC). Change only the `URL=` line:
 
 ```bash
-IP=192.168.1.17   # <-- change this and nothing else
+URL='http://74.208.61.41:3005/login?callbackUrl=%2Fadmin'   # <-- change this only
 sudo apt update && sudo apt install -y curl && \
 curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/tablet-setup.sh -o tablet-setup.sh && \
 chmod +x tablet-setup.sh && \
-sudo APPLIANCE_IP=$IP ./tablet-setup.sh && \
+sudo APPLIANCE_URL="$URL" ./tablet-setup.sh && \
+sudo reboot
+```
+
+Hand-typing because copy/paste isn't available? Use the hyphen-free alias
+(messaging apps mangle hyphens into dashes):
+
+```
+sudo apt update
+sudo apt install curl
+wget https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/tablet.sh
+sudo APPLIANCE_URL='http://74.208.61.41:3005/login?callbackUrl=%2Fadmin' bash tablet.sh
 sudo reboot
 ```
 
@@ -58,11 +72,12 @@ one device (it becomes the system of record — the only one running the door
 logger), then apply the tablet tweaks on top:
 
 ```bash
-IP=192.168.1.17   # <-- change this and nothing else
+URL='http://74.208.61.41:3005/login?callbackUrl=%2Fadmin'   # <-- kiosk target
+PLC=192.168.1.17                                            # <-- Modbus PLC
 sudo apt update && sudo apt install -y curl && \
 curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/setup.sh -o setup.sh && \
 chmod +x setup.sh && \
-sudo APPLIANCE_IP=$IP ./setup.sh && \
+sudo APPLIANCE_URL="$URL" PLC_HOST="$PLC" ./setup.sh && \
 curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/scripts/tablet_tweaks.sh | sudo bash && \
 sudo reboot
 ```
@@ -93,7 +108,8 @@ and WAGO PLCs only allow a few concurrent Modbus TCP connections.
 Enables GDM auto-login for the GUI user and launches Google Chrome in `--kiosk`
 mode on login, inside the existing GNOME/Wayland session.
 
-- **Default URL:** the appliance UI at `http://192.168.1.17`.
+- **Target URL: required, not hardcoded** — pass `APPLIANCE_URL='http://host:port/path'`
+  (or `APPLIANCE_IP=<ip>` for plain `http://<ip>`).
 - **No password prompts.** Auto-login is enabled and the GNOME login keyring is
   created blank (Chrome is also launched with `--password-store=basic`), so the
   "unlock your login keyring" dialog never appears.
@@ -109,11 +125,11 @@ mode on login, inside the existing GNOME/Wayland session.
 - Installs Google Chrome automatically (Google's apt repo, with a direct `.deb`
   fallback) if not present.
 
-Override the target URL or user when running the script directly:
+Run the kiosk step directly (URL is required — set it in the terminal):
 
 ```bash
-KIOSK_URL="http://192.168.1.17" ./scripts/08_kiosk.sh
-KIOSK_USER="operator"           ./scripts/08_kiosk.sh
+sudo APPLIANCE_URL='http://host:port/path' bash scripts/08_kiosk.sh
+sudo APPLIANCE_URL='...' KIOSK_USER=operator bash scripts/08_kiosk.sh
 ```
 
 Reboot to enter kiosk mode:
@@ -127,7 +143,8 @@ To change the URL after install, edit `KIOSK_URL` at the top of
 
 ## Door event logger (`09_doorlog.sh`)
 
-The PLC at `192.168.1.17` keeps only the **last 10 events per door**. This
+The WAGO PLC (address set in the terminal via `PLC_HOST=<ip>`) keeps only the
+**last 10 events per door**. This
 service polls it over Modbus TCP and appends every new event to a permanent
 SQLite database on the IPC — no duplicates (unique `door_id + event_seq`
 guard), no loss, resumable across restarts and reboots. Source lives in

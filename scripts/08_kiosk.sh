@@ -8,7 +8,10 @@ set -euo pipefail
 # in --kiosk mode pointed at KIOSK_URL. Designed to run inside the existing GNOME
 # (Wayland) session set up by the other scripts in this repo.
 #
-# Defaults point at the appliance UI at http://192.168.1.17.
+# The target URL is REQUIRED — there is no hardcoded default. Pass one of:
+#   APPLIANCE_URL='http://74.208.61.41:3005/login?callbackUrl=%2Fadmin'  (full URL)
+#   APPLIANCE_IP=192.168.1.50                                            (becomes http://<ip>)
+#   KIOSK_URL='http://host:port/path'                                    (same as APPLIANCE_URL)
 #
 # Boot is fully unattended: GDM auto-login plus a blank login keyring, so no
 # password prompt ever appears. Self-signed certificates on the target URL are
@@ -16,16 +19,21 @@ set -euo pipefail
 # Files downloaded from the portal (e.g. CSV exports) are saved silently to
 # ~/kiosk-data without a save dialog.
 #
-# Override at run time (any of these):
-#   APPLIANCE_IP="192.168.1.50"      ./08_kiosk.sh   # one IP for the whole stack
-#   KIOSK_URL="http://192.168.1.17"  ./08_kiosk.sh
-#   KIOSK_USER="operator"            ./08_kiosk.sh
+#   KIOSK_USER="operator" ./08_kiosk.sh   # override the auto-detected GUI user
 # ---------------------------------------------------------------------------
 
-# --- Config -----------------------------------------------------------------
-APPLIANCE_IP="${APPLIANCE_IP:-192.168.1.17}"
-KIOSK_URL="${KIOSK_URL:-http://$APPLIANCE_IP}"
-KIOSK_FALLBACK_URL="${KIOSK_FALLBACK_URL:-http://$APPLIANCE_IP}"
+# --- Config (no hardcoded target — must come from the environment) -----------
+KIOSK_URL="${KIOSK_URL:-${APPLIANCE_URL:-}}"
+if [[ -z "$KIOSK_URL" && -n "${APPLIANCE_IP:-}" ]]; then
+  KIOSK_URL="http://$APPLIANCE_IP"
+fi
+if [[ -z "$KIOSK_URL" ]]; then
+  echo "❌ No kiosk target set. Run with one of:" >&2
+  echo "   sudo APPLIANCE_URL='http://host:port/path' $0" >&2
+  echo "   sudo APPLIANCE_IP=192.168.1.50 $0" >&2
+  exit 1
+fi
+KIOSK_FALLBACK_URL="${KIOSK_FALLBACK_URL:-$KIOSK_URL}"
 KIOSK_DIR="/opt/kiosk"
 START_SCRIPT="$KIOSK_DIR/start-kiosk.sh"
 
@@ -40,7 +48,8 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # --- Detect the real GUI user (never root) ----------------------------------
-KIOSK_USER="${KIOSK_USER:-$(logname 2>/dev/null || who | awk '{print $1; exit}')}"
+# SUDO_USER is the most reliable source (logname often fails in GUI terminals).
+KIOSK_USER="${KIOSK_USER:-${SUDO_USER:-$(logname 2>/dev/null || who | awk '{print $1; exit}')}}"
 if [[ -z "$KIOSK_USER" || "$KIOSK_USER" == "root" ]]; then
   KIOSK_USER="$(getent passwd | awk -F: '$3>=1000 && $3<65534 {print $1; exit}')"
 fi

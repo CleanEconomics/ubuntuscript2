@@ -36,10 +36,16 @@ RUSTDESK_DEB="rustdesk-${RUSTDESK_VER}-x86_64.deb"
 RUSTDESK_URL="https://github.com/rustdesk/rustdesk/releases/download/${RUSTDESK_VER}/${RUSTDESK_DEB}"
 
 echo "⬇️  Downloading RustDesk ${RUSTDESK_VER}..."
-wget -q "$RUSTDESK_URL" -O "/tmp/${RUSTDESK_DEB}"
-
-echo "📦 Installing RustDesk..."
-sudo apt install -y "/tmp/${RUSTDESK_DEB}"
+# A failed download must NOT abort the whole provision (set -e) — remote
+# support is nice-to-have; the kiosk steps after this are not.
+if wget -q "$RUSTDESK_URL" -O "/tmp/${RUSTDESK_DEB}"; then
+  echo "📦 Installing RustDesk..."
+  sudo apt install -y "/tmp/${RUSTDESK_DEB}" || \
+    echo "⚠️  RustDesk install failed — continuing without remote support."
+else
+  echo "⚠️  Could not download RustDesk — continuing without remote support."
+  echo "    Install later with: curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/scripts/07_anydesk_install.sh | sudo bash"
+fi
 
 # --- 4. Enable & start service ---
 echo "⚙️  Enabling RustDesk service..."

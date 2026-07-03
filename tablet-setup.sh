@@ -14,13 +14,24 @@ set -e
 #             on-screen keyboard, no suspend), automatic updates OFF
 #   skipped:  02 node stack, 03 python/docker, 04 beremiz, 09 doorlog
 #
-# Usage (change only the IP):
-#   sudo APPLIANCE_IP=192.168.1.17 ./tablet-setup.sh && sudo reboot
+# Usage — the kiosk target is REQUIRED (no hardcoded default):
+#   sudo APPLIANCE_URL='http://host:port/path' ./tablet-setup.sh && sudo reboot
+#   sudo APPLIANCE_IP=192.168.1.50             ./tablet-setup.sh && sudo reboot
 # ---------------------------------------------------------------------------
 
 REPO="CleanEconomics/ubuntuscript2"
 BRANCH="main"
 RAW_BASE="https://raw.githubusercontent.com/$REPO/$BRANCH"
+
+# --- Require the kiosk target up front ----------------------------------------
+if [[ -z "${APPLIANCE_URL:-}" && -z "${APPLIANCE_IP:-}" && -z "${KIOSK_URL:-}" ]]; then
+  echo "❌ No kiosk target set — nothing is hardcoded, you must pass one:"
+  echo "   sudo APPLIANCE_URL='http://74.208.61.41:3005/login' bash $0"
+  echo "   sudo APPLIANCE_IP=192.168.1.50 bash $0"
+  exit 1
+fi
+TARGET_DISPLAY="${KIOSK_URL:-${APPLIANCE_URL:-http://$APPLIANCE_IP}}"
+export APPLIANCE_URL APPLIANCE_IP KIOSK_URL 2>/dev/null || true
 
 TABLET_SCRIPTS=(
   01_system_update.sh
@@ -48,13 +59,15 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 echo "==============================="
 echo "  📱 Tablet Kiosk Setup"
 echo "==============================="
-echo "🌐 Appliance IP: ${APPLIANCE_IP:-192.168.1.17 (default)}"
+echo "🌐 Kiosk target: $TARGET_DISPLAY"
 echo "📁 Logging to:   $LOG_FILE"
 echo "==============================="
 
 # --------------------------------------------
 # Fetch and execute a script from GitHub
 # --------------------------------------------
+FAILED_SCRIPTS=()
+
 run_remote_script() {
   local script_name="$1"
   local url="$RAW_BASE/scripts/$script_name"
@@ -65,13 +78,21 @@ run_remote_script() {
   echo "▶️  Running $script_name ..."
   echo "📄 Logging to: $script_log"
 
+  # One failing step must NOT abort the provision — record it, keep going,
+  # and report at the end.
+  local status=0
   {
     echo "===== START $script_name $(date) ====="
-    curl -fsSL "$url" | bash
-    echo "===== END $script_name $(date) ====="
+    curl -fsSL "$url" | bash || status=$?
+    echo "===== END $script_name $(date) (exit $status) ====="
   } > >(tee -a "$script_log" "$LOG_FILE") 2>&1
 
-  echo "✅ Finished $script_name"
+  if [[ $status -ne 0 ]]; then
+    FAILED_SCRIPTS+=("$script_name")
+    echo "⚠️  $script_name FAILED (exit $status) — continuing with remaining steps"
+  else
+    echo "✅ Finished $script_name"
+  fi
   echo ""
 }
 
@@ -83,8 +104,14 @@ for script in "${TABLET_SCRIPTS[@]}"; do
 done
 
 echo "==============================="
-echo "🎯 Tablet setup complete!"
-echo "   Kiosk URL:  http://${APPLIANCE_IP:-192.168.1.17}"
+if [[ ${#FAILED_SCRIPTS[@]} -gt 0 ]]; then
+  echo "⚠️  Setup finished with FAILURES: ${FAILED_SCRIPTS[*]}"
+  echo "   Re-run a failed step with:"
+  echo "   curl -fsSL $RAW_BASE/scripts/<name> | sudo APPLIANCE_URL='$TARGET_DISPLAY' bash"
+else
+  echo "🎯 Tablet setup complete!"
+fi
+echo "   Kiosk URL:  $TARGET_DISPLAY"
 echo "   Reboot to enter kiosk mode:  sudo reboot"
 echo "   Logs saved to: $LOG_DIR"
 echo "==============================="
