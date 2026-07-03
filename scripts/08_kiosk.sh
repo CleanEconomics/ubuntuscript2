@@ -111,11 +111,15 @@ fi
 BROWSER_BIN="${BROWSER_BIN:-google-chrome-stable}"
 echo "🌐 Using browser: $BROWSER_BIN"
 
-# --- Managed policy: save downloads (CSV exports) silently to ~/kiosk-data ---
+# --- Managed policy: silent CSV downloads + no HTTPS-First warning ----------
 # PromptForDownloadLocation=false kills the "Save As" dialog, so an export
-# button in the web portal writes straight to disk. Policy dirs cover Chrome
-# and both Chromium (deb/snap) layouts.
-echo "📁 Configuring silent downloads to ~/kiosk-data..."
+# button in the web portal writes straight to disk.
+# HttpsOnlyMode/HttpsUpgradesEnabled/HttpAllowlist stop Chrome's "this site
+# doesn't support a secure connection" interstitial that HTTPS-First mode
+# shows for plain-HTTP sites in Incognito. Policy dirs cover Chrome and both
+# Chromium (deb/snap) layouts.
+KIOSK_HOST="$(echo "$KIOSK_URL" | sed -E 's|^[a-zA-Z]+://||; s|[/:].*$||')"
+echo "📁 Configuring browser policy (downloads -> ~/kiosk-data, plain HTTP allowed for $KIOSK_HOST)..."
 for PDIR in /etc/opt/chrome/policies/managed \
             /etc/chromium/policies/managed \
             /etc/chromium-browser/policies/managed; do
@@ -124,7 +128,10 @@ for PDIR in /etc/opt/chrome/policies/managed \
 {
   "DownloadDirectory": "\${user_home}/kiosk-data",
   "PromptForDownloadLocation": false,
-  "DefaultBrowserSettingEnabled": false
+  "DefaultBrowserSettingEnabled": false,
+  "HttpsOnlyMode": "disallowed",
+  "HttpsUpgradesEnabled": false,
+  "HttpAllowlist": ["$KIOSK_HOST"]
 }
 EOF
 done
