@@ -102,6 +102,17 @@ echo "✅ device can only be powered off by holding the power button (firmware)"
 # --- 3. Remove the GNOME first-login welcome tour ------------------------------
 apt purge -y gnome-initial-setup 2>/dev/null || true
 
+# --- 4. Optional touchscreen calibration ---------------------------------------
+# Some tablet models have the touch sensor mirrored vs the panel. Pass
+# TOUCH_FLIP=x|y|xy or TOUCH_ROTATE=90|270 to bake in the fix (see
+# scripts/touch_fix.sh for the corner test that picks the right value).
+if [[ -n "${TOUCH_FLIP:-}" || -n "${TOUCH_ROTATE:-}" ]]; then
+  echo "🖐  Applying touchscreen calibration (flip=${TOUCH_FLIP:-} rotate=${TOUCH_ROTATE:-})..."
+  curl -fsSL "$RAW_BASE/scripts/touch_fix.sh" -o /tmp/touch_fix.sh
+  FLIP="${TOUCH_FLIP:-}" ROTATE="${TOUCH_ROTATE:-}" bash /tmp/touch_fix.sh \
+    || echo "⚠️  Touch calibration failed — run scripts/touch_fix.sh manually."
+fi
+
 echo ""
 echo "==============================="
 echo "✅ Tablet tweaks applied"
