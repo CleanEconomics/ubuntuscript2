@@ -51,6 +51,21 @@ fi
 echo "⚙️  Enabling RustDesk service..."
 sudo systemctl enable --now rustdesk || true
 
+# --- 4b. Optional unattended access (password passed in the terminal) ---
+# Run setup with RUSTDESK_PW='...' to set a permanent password so you can
+# remote in without someone reading the one-time code off the screen.
+if [[ -n "${RUSTDESK_PW:-}" ]] && command -v rustdesk >/dev/null 2>&1; then
+  echo "🔑 Setting RustDesk permanent password (unattended access)..."
+  sleep 2  # give the service a moment
+  sudo rustdesk --password "$RUSTDESK_PW" \
+    && echo "✅ Permanent password set." \
+    || echo "⚠️  Could not set RustDesk password — set it in RustDesk Settings > Security."
+fi
+if command -v rustdesk >/dev/null 2>&1; then
+  RID="$(sudo rustdesk --get-id 2>/dev/null | tail -1 || true)"
+  [[ -n "$RID" ]] && echo "🆔 This device's RustDesk ID: $RID  (record it for remote support)"
+fi
+
 # --- 5. Done ---
 echo ""
 echo "✅ RustDesk v${RUSTDESK_VER} installed successfully!"
