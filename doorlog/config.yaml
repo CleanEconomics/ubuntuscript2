@@ -1,7 +1,9 @@
 # Door Event History Logger — /etc/doorlog/config.yaml
 # All keys optional; defaults shown. Spec §7.
 
-plc_host: 192.168.1.17
+# REQUIRED — the WAGO PLC's address on the OT LAN (e.g. 192.168.1.17).
+# The installer sets this when run with PLC_HOST=<ip> (or APPLIANCE_IP=<ip>).
+plc_host: CHANGEME
 plc_port: 502
 unit_id: 1                      # Modbus slave/unit id — confirm on the PLC
 

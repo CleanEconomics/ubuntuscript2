@@ -5,7 +5,7 @@ import copy
 import yaml
 
 DEFAULTS = {
-    "plc_host": "192.168.1.17",
+    "plc_host": "",  # required — set in config.yaml (no hardcoded PLC address)
     "plc_port": 502,
     "unit_id": 1,
     "reg_base": 0,

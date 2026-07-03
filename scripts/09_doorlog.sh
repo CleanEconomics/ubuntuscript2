@@ -4,7 +4,7 @@ set -euo pipefail
 # 09_doorlog.sh
 # ---------------------------------------------------------------------------
 # Install the Door Event History Logger service.
-# Polls the WAGO bay-door PLC (192.168.1.17) over Modbus TCP and stores every
+# Polls the WAGO bay-door PLC (address via PLC_HOST=<ip>) over Modbus TCP and stores every
 # door event permanently in SQLite at /var/lib/doorlog/doorlog.db — the PLC
 # only keeps the last 10 events per door; the IPC keeps everything, forever.
 #
@@ -98,10 +98,15 @@ if [[ ! -f "$CFG_DIR/config.yaml" ]]; then
 else
   echo "⚙️  Keeping existing $CFG_DIR/config.yaml"
 fi
-# APPLIANCE_IP overrides the PLC host (same variable the kiosk step uses).
-if [[ -n "${APPLIANCE_IP:-}" ]]; then
-  echo "🌐 Setting plc_host to $APPLIANCE_IP"
-  sed -i "s/^plc_host:.*/plc_host: $APPLIANCE_IP/" "$CFG_DIR/config.yaml"
+# PLC_HOST (preferred) or APPLIANCE_IP sets the Modbus PLC address. Note the
+# PLC is NOT necessarily the web portal — APPLIANCE_URL does not apply here.
+DOORLOG_PLC="${PLC_HOST:-${APPLIANCE_IP:-}}"
+if [[ -n "$DOORLOG_PLC" ]]; then
+  echo "🌐 Setting plc_host to $DOORLOG_PLC"
+  sed -i "s/^plc_host:.*/plc_host: $DOORLOG_PLC/" "$CFG_DIR/config.yaml"
+elif grep -qE '^plc_host: *(CHANGEME|"")? *$' "$CFG_DIR/config.yaml"; then
+  echo "⚠️  plc_host is NOT configured — the door logger will idle until you either"
+  echo "    edit $CFG_DIR/config.yaml, or re-run with: sudo PLC_HOST=<plc-ip> bash $0"
 fi
 chown root:"$SVC_USER" "$CFG_DIR/config.yaml"
 chmod 640 "$CFG_DIR/config.yaml"
