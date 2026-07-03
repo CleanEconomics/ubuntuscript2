@@ -6,14 +6,20 @@ remote support, and boots the machine into a full-screen **kiosk**.
 
 ## Install
 
+One block — change only the `IP=` line (the appliance/PLC address), paste the rest as-is:
+
 ```bash
-sudo apt update && sudo apt install curl
-curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/setup.sh -o setup.sh
-chmod +x setup.sh
-./setup.sh
+IP=192.168.1.17   # <-- change this and nothing else
+sudo apt update && sudo apt install -y curl && \
+curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/setup.sh -o setup.sh && \
+chmod +x setup.sh && \
+sudo APPLIANCE_IP=$IP ./setup.sh && \
+sudo reboot
 ```
 
 `setup.sh` fetches every numbered script in `scripts/` and runs them in order.
+`APPLIANCE_IP` sets both the kiosk URL (`08_kiosk.sh`) and the door-logger PLC
+host (`09_doorlog.sh`); if omitted, both default to `192.168.1.17`.
 
 ## Scripts
 

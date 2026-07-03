@@ -17,13 +17,15 @@ set -euo pipefail
 # ~/kiosk-data without a save dialog.
 #
 # Override at run time (any of these):
+#   APPLIANCE_IP="192.168.1.50"      ./08_kiosk.sh   # one IP for the whole stack
 #   KIOSK_URL="http://192.168.1.17"  ./08_kiosk.sh
 #   KIOSK_USER="operator"            ./08_kiosk.sh
 # ---------------------------------------------------------------------------
 
 # --- Config -----------------------------------------------------------------
-KIOSK_URL="${KIOSK_URL:-http://192.168.1.17}"
-KIOSK_FALLBACK_URL="${KIOSK_FALLBACK_URL:-http://192.168.1.17}"
+APPLIANCE_IP="${APPLIANCE_IP:-192.168.1.17}"
+KIOSK_URL="${KIOSK_URL:-http://$APPLIANCE_IP}"
+KIOSK_FALLBACK_URL="${KIOSK_FALLBACK_URL:-http://$APPLIANCE_IP}"
 KIOSK_DIR="/opt/kiosk"
 START_SCRIPT="$KIOSK_DIR/start-kiosk.sh"
 
