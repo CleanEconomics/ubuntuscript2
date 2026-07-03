@@ -51,6 +51,26 @@ Tablet tweaks (`scripts/tablet_tweaks.sh`, tablet profile only):
 Requirements: x86_64 tablet (check before wiping Windows — no ARM),
 Ubuntu Desktop 24.04 LTS, 4 GB RAM minimum.
 
+### Using a tablet as the IPC
+
+A strong tablet can be the IPC itself. Run the **full** install on exactly
+one device (it becomes the system of record — the only one running the door
+logger), then apply the tablet tweaks on top:
+
+```bash
+IP=192.168.1.17   # <-- change this and nothing else
+sudo apt update && sudo apt install -y curl && \
+curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/setup.sh -o setup.sh && \
+chmod +x setup.sh && \
+sudo APPLIANCE_IP=$IP ./setup.sh && \
+curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/scripts/tablet_tweaks.sh | sudo bash && \
+sudo reboot
+```
+
+Every other tablet gets the viewer profile (`tablet-setup.sh` above). Don't
+run the door logger on more than one device: you'd get competing databases,
+and WAGO PLCs only allow a few concurrent Modbus TCP connections.
+
 ## Scripts
 
 | Script | Purpose |
