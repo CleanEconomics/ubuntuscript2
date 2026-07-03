@@ -10,9 +10,11 @@ sudo curl -fsSL "$THEME_REPO_URL/$THEME_NAME.plymouth" -o "$THEME_DIR/$THEME_NAM
 sudo curl -fsSL "$THEME_REPO_URL/$THEME_NAME.script" -o "$THEME_DIR/$THEME_NAME.script"
 sudo curl -fsSL "$THEME_REPO_URL/logo.png" -o "$THEME_DIR/logo.png"
 sudo curl -fsSL "$THEME_REPO_URL/background.png" -o "$THEME_DIR/background.png"
+sudo curl -fsSL "$THEME_REPO_URL/spinner.png" -o "$THEME_DIR/spinner.png"
 
-
-sudo update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth "$THEME_DIR/$THEME_NAME.plymouth" 100
+# Priority 200 beats Ubuntu's default bgrt theme (110) — bgrt is the one that
+# shows the factory/vendor logo at boot. --set pins ours regardless.
+sudo update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth "$THEME_DIR/$THEME_NAME.plymouth" 200
 sudo update-alternatives --set default.plymouth "$THEME_DIR/$THEME_NAME.plymouth"
 sudo update-initramfs -u
 
