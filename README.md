@@ -54,8 +54,9 @@ RustDesk → Chrome kiosk → tablet tweaks → updates off.
 
 Tablet tweaks (`scripts/tablet_tweaks.sh`, tablet profile only):
 
-- Screen auto-rotation locked (mount portrait? rotate once in
-  Settings → Displays first — the lock only stops the accelerometer).
+- Auto-rotation ON: screen and touch follow how the tablet is held
+  (`iio-sensor-proxy`). For wall-mounted units, freeze it with
+  `LOCK_ROTATION=1` when running `tablet_tweaks.sh`.
 - On-screen keyboard stays enabled so portal text fields are usable
   (tablets have no physical keyboard).
 - Suspend made impossible: power button ignored, sleep targets masked,
