@@ -1,45 +1,75 @@
-# Simple Plymouth theme: background + centered logo only
+# Client brand boot splash — animated.
+# Background scaled to cover, centered logo with a soft pulse, and a rotating
+# spinner ring below it. Uses only the documented Plymouth script API
+# (Sprite/Image/Math/SetRefreshFunction) — no nonstandard calls.
 
-# Fallback background color (in case image fails)
-Window.SetBackgroundTopColor (0.0, 0.0, 0.0);
-Window.SetBackgroundBottomColor (0.0, 0.0, 0.0);
+Window.SetBackgroundTopColor(0.29, 0.42, 0.51);
+Window.SetBackgroundBottomColor(0.16, 0.24, 0.30);
 
-# Optional rotation (0 normal, 180 if flipped display)
-rotate_degrees = 0.0;
-Window.SetRotation(rotate_degrees);
+screen.w = Window.GetWidth();
+screen.h = Window.GetHeight();
 
-# Load images (make sure these exist in ImageDir)
-bg = Image("background.png");
-logo = Image("logo.png");
-
-# Get display size
-w = Window.GetWidth();
-h = Window.GetHeight();
-
-# Draw background (centered & scaled to cover screen)
-if (bg) {
-    bgw = bg.GetWidth();
-    bgh = bg.GetHeight();
-    scale = max(w / bgw, h / bgh);
-    sprite_bg = Sprite(bg);
-    sprite_bg.SetScale(scale, scale);
-    sprite_bg.SetX(w / 2 - (bgw * scale) / 2);
-    sprite_bg.SetY(h / 2 - (bgh * scale) / 2);
-    sprite_bg.SetZ(-100); # ensure background stays behind logo
+# --- Background: scale to cover, centered -----------------------------------
+bg.image = Image("background.png");
+if (bg.image) {
+    scale_x = screen.w / bg.image.GetWidth();
+    scale_y = screen.h / bg.image.GetHeight();
+    if (scale_x > scale_y)
+        bg.scale = scale_x;
+    else
+        bg.scale = scale_y;
+    bg.scaled = bg.image.Scale(bg.image.GetWidth() * bg.scale,
+                               bg.image.GetHeight() * bg.scale);
+    bg.sprite = Sprite(bg.scaled);
+    bg.sprite.SetX(screen.w / 2 - bg.scaled.GetWidth() / 2);
+    bg.sprite.SetY(screen.h / 2 - bg.scaled.GetHeight() / 2);
+    bg.sprite.SetZ(-100);
 }
 
-# Draw logo (centered)
-if (logo) {
-    lw = logo.GetWidth();
-    lh = logo.GetHeight();
-    sprite_logo = Sprite(logo);
-    sprite_logo.SetX(w / 2 - lw / 2);
-    sprite_logo.SetY(h / 2 - lh / 2);
+# --- Logo: centered ----------------------------------------------------------
+logo.image = Image("logo.png");
+if (logo.image) {
+    logo.sprite = Sprite(logo.image);
+    logo.x = screen.w / 2 - logo.image.GetWidth() / 2;
+    logo.y = screen.h / 2 - logo.image.GetHeight() / 2;
+    logo.sprite.SetX(logo.x);
+    logo.sprite.SetY(logo.y);
+    logo.sprite.SetZ(10);
 }
 
-# Optional pause before fade-out
-Plymouth.SystemSleep(3);
+# --- Spinner: pre-rotated frames, below the logo -----------------------------
+spinner.frame_count = 24;
+spinner.image = Image("spinner.png");
+if (spinner.image) {
+    for (i = 0; i < spinner.frame_count; i++)
+        spinner.frame[i] = spinner.image.Rotate(i * 2 * Math.Pi / spinner.frame_count);
+    spinner.sprite = Sprite(spinner.frame[0]);
+    spinner.sprite.SetX(screen.w / 2 - spinner.image.GetWidth() / 2);
+    if (logo.image)
+        spinner.sprite.SetY(logo.y + logo.image.GetHeight() + 40);
+    else
+        spinner.sprite.SetY(screen.h / 2 + 40);
+    spinner.sprite.SetZ(10);
+}
 
-# Optional fade-out
-sprite_logo.FadeOut(1000);
-Plymouth.SystemSleep(1);
+# --- Animation: ~50 refreshes/sec --------------------------------------------
+counter = 0;
+fun refresh_callback() {
+    counter++;
+    if (spinner.image) {
+        frame = Math.Int(counter / 2) % spinner.frame_count;
+        spinner.sprite.SetImage(spinner.frame[frame]);
+    }
+    if (logo.image) {
+        # gentle pulse between 80% and 100% opacity, ~2.5 s period
+        logo.sprite.SetOpacity(0.9 + 0.1 * Math.Sin(counter * 2 * Math.Pi / 125));
+    }
+}
+Plymouth.SetRefreshFunction(refresh_callback);
+
+# --- On quit, leave the logo fully opaque ------------------------------------
+fun quit_callback() {
+    if (logo.image)
+        logo.sprite.SetOpacity(1);
+}
+Plymouth.SetQuitFunction(quit_callback);
