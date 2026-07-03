@@ -29,6 +29,7 @@ chmod +x setup.sh
 | `07_anydesk_install.sh` | RustDesk remote support (Wayland enabled) |
 | `08_kiosk.sh` | Boot into a full-screen Google Chrome kiosk |
 | `09_doorlog.sh` | Permanent door-event history logger (PLC → SQLite) |
+| `10_disable_updates.sh` | Turn off all automatic updates (appliance mode) |
 | `99_finish.sh` | Version summary |
 
 ## Kiosk mode (`08_kiosk.sh`)
@@ -121,3 +122,22 @@ sqlite3 -header -csv 'file:/var/lib/doorlog/doorlog.db?mode=ro' \
 Test without hardware: `python3 /opt/doorlog/tools/plc_sim.py --port 5020`
 starts a simulated PLC (type `push <door> <etype>` on stdin), then point
 `plc_host: 127.0.0.1` / `plc_port: 5020` at it.
+
+## No automatic updates (`10_disable_updates.sh`)
+
+The machine is an OT appliance — nothing updates on its own. This step turns
+off every automatic update path:
+
+- **apt:** unattended-upgrades disabled, `apt-daily` timers stopped and
+  masked, all `APT::Periodic` tasks zeroed.
+- **snap:** refreshes held indefinitely (`snap refresh --hold`).
+- **GNOME:** Software auto-download/install of updates and update-notifier
+  popups off (system-wide dconf), release-upgrade prompts set to `never`.
+- **Chrome:** updates via apt on Linux, so with apt automation off it stays
+  put. To also block manual upgrades: `sudo apt-mark hold google-chrome-stable`.
+
+Manual updates still work normally during a maintenance window:
+
+```bash
+sudo apt update && sudo apt upgrade
+```
