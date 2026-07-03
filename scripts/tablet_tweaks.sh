@@ -39,9 +39,12 @@ fi
 apt install -y iio-sensor-proxy 2>/dev/null || true
 
 # LOCK_ROTATION=1 freezes the current orientation (wall mounts); default 0
-# lets screen + touch follow the accelerometer.
+# lets screen + touch follow the accelerometer. Setting BOOT_ROTATION (a fixed
+# mount) implies the lock unless LOCK_ROTATION=0 is passed explicitly.
 ORIENTATION_LOCK="false"
-if [[ "${LOCK_ROTATION:-0}" == "1" ]]; then
+if [[ "${LOCK_ROTATION:-}" == "1" ]]; then
+  ORIENTATION_LOCK="true"
+elif [[ -z "${LOCK_ROTATION:-}" && -n "${BOOT_ROTATION:-}" ]]; then
   ORIENTATION_LOCK="true"
 fi
 
@@ -102,7 +105,49 @@ echo "✅ device can only be powered off by holding the power button (firmware)"
 # --- 3. Remove the GNOME first-login welcome tour ------------------------------
 apt purge -y gnome-initial-setup 2>/dev/null || true
 
-# --- 4. Optional touchscreen calibration ---------------------------------------
+# --- 4. Fixed boot orientation (BOOT_ROTATION=left|right|inverted|normal) ------
+# Sets the panel orientation at the KERNEL level, so the boot splash, the
+# login screen, the GNOME session, AND the touch mapping all come up rotated
+# together. left = portrait with the top toward the tablet's left edge; if
+# yours lands upside down, use right instead.
+if [[ -n "${BOOT_ROTATION:-}" ]]; then
+  ORIENT=""; FBROT=0
+  case "$BOOT_ROTATION" in
+    left)     ORIENT="left_side_up";  FBROT=3 ;;
+    right)    ORIENT="right_side_up"; FBROT=1 ;;
+    inverted) ORIENT="upside_down";   FBROT=2 ;;
+    normal)   ORIENT="normal";        FBROT=0 ;;
+    *) echo "⚠️  BOOT_ROTATION must be left, right, inverted, or normal — skipping." ;;
+  esac
+  if [[ -n "$ORIENT" ]]; then
+    # Find the internal panel's DRM connector (eDP/DSI/LVDS preferred).
+    CONN=""
+    for d in /sys/class/drm/card*-*; do
+      [[ -f "$d/status" ]] || continue
+      grep -qx connected "$d/status" || continue
+      name="${d##*/}"; name="${name#*-}"
+      case "$name" in
+        eDP*|DSI*|LVDS*) CONN="$name"; break ;;
+      esac
+      if [[ -z "$CONN" ]]; then CONN="$name"; fi
+    done
+    if [[ -z "$CONN" ]]; then
+      echo "⚠️  No connected display connector found — skipping boot rotation."
+    else
+      echo "🔄 Rotating display at boot: $CONN -> $ORIENT (splash + login + session + touch)..."
+      sed -i -E 's/ ?video=[^ "]*panel_orientation[^ "]*//g; s/ ?fbcon=rotate:[0-9]//g' /etc/default/grub
+      sed -i -E "s|^(GRUB_CMDLINE_LINUX_DEFAULT=\")([^\"]*)\"|\1\2 video=$CONN:panel_orientation=$ORIENT fbcon=rotate:$FBROT\"|" /etc/default/grub
+      if grep -q "panel_orientation=$ORIENT" /etc/default/grub; then
+        update-grub
+        echo "✅ Boot orientation set (video=$CONN:panel_orientation=$ORIENT)"
+      else
+        echo "⚠️  Could not edit GRUB_CMDLINE_LINUX_DEFAULT in /etc/default/grub — boot rotation not applied."
+      fi
+    fi
+  fi
+fi
+
+# --- 5. Optional touchscreen calibration ---------------------------------------
 # Some tablet models have the touch sensor mirrored vs the panel. Pass
 # TOUCH_FLIP=x|y|xy or TOUCH_ROTATE=90|270 to bake in the fix (see
 # scripts/touch_fix.sh for the corner test that picks the right value).
