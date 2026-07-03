@@ -158,6 +158,17 @@ if [[ -n "${TOUCH_FLIP:-}" || -n "${TOUCH_ROTATE:-}" ]]; then
     || echo "⚠️  Touch calibration failed — run scripts/touch_fix.sh manually."
 fi
 
+# --- 6. Optional accelerometer correction (ACCEL_FIX=180|90|270) ---------------
+# For models whose accelerometer is mounted rotated: auto-rotate flips the
+# screen upside down (or 90 deg off) in every position a few seconds after
+# boot. The fix is keyed to this hardware model via DMI.
+if [[ -n "${ACCEL_FIX:-}" ]]; then
+  echo "🧭 Applying accelerometer mount correction (MODE=$ACCEL_FIX)..."
+  curl -fsSL "$RAW_BASE/scripts/rotate_fix.sh" -o /tmp/rotate_fix.sh
+  MODE="$ACCEL_FIX" bash /tmp/rotate_fix.sh \
+    || echo "⚠️  Accelerometer correction failed — run scripts/rotate_fix.sh manually."
+fi
+
 echo ""
 echo "==============================="
 echo "✅ Tablet tweaks applied"
