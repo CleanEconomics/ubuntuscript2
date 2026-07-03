@@ -26,8 +26,8 @@ RAW_BASE="https://raw.githubusercontent.com/$REPO/$BRANCH"
 # --- Require the kiosk target up front ----------------------------------------
 if [[ -z "${APPLIANCE_URL:-}" && -z "${APPLIANCE_IP:-}" && -z "${KIOSK_URL:-}" ]]; then
   echo "❌ No kiosk target set — nothing is hardcoded, you must pass one:"
-  echo "   sudo APPLIANCE_URL='http://74.208.61.41:3005/login' bash $0"
-  echo "   sudo APPLIANCE_IP=192.168.1.50 bash $0"
+  echo "   sudo APPLIANCE_URL='http://host:port/path' bash $0"
+  echo "   sudo APPLIANCE_IP=<ip> bash $0"
   exit 1
 fi
 TARGET_DISPLAY="${KIOSK_URL:-${APPLIANCE_URL:-http://$APPLIANCE_IP}}"

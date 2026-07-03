@@ -11,7 +11,7 @@ door logger) on the command line. Change only the first two lines:
 
 ```bash
 URL='http://74.208.61.41:3005/login?callbackUrl=%2Fadmin'   # <-- kiosk target
-PLC=192.168.1.17                                            # <-- Modbus PLC (door logger)
+PLC=SET_PLC_IP_HERE                                         # <-- Modbus PLC (door logger)
 sudo apt update && sudo apt install -y curl && \
 curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/setup.sh -o setup.sh && \
 chmod +x setup.sh && \
@@ -74,7 +74,7 @@ logger), then apply the tablet tweaks on top:
 
 ```bash
 URL='http://74.208.61.41:3005/login?callbackUrl=%2Fadmin'   # <-- kiosk target
-PLC=192.168.1.17                                            # <-- Modbus PLC
+PLC=SET_PLC_IP_HERE                                         # <-- Modbus PLC
 sudo apt update && sudo apt install -y curl && \
 curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/setup.sh -o setup.sh && \
 chmod +x setup.sh && \
