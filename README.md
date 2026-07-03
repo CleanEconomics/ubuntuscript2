@@ -21,6 +21,36 @@ sudo reboot
 `APPLIANCE_IP` sets both the kiosk URL (`08_kiosk.sh`) and the door-logger PLC
 host (`09_doorlog.sh`); if omitted, both default to `192.168.1.17`.
 
+## Tablet install (kiosk viewer only)
+
+For Linux tablets that just display the portal — no Node-RED/Docker/Beremiz,
+no door logger (that stays on the IPC). Same rule: change only the `IP=` line.
+
+```bash
+IP=192.168.1.17   # <-- change this and nothing else
+sudo apt update && sudo apt install -y curl && \
+curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/tablet-setup.sh -o tablet-setup.sh && \
+chmod +x tablet-setup.sh && \
+sudo APPLIANCE_IP=$IP ./tablet-setup.sh && \
+sudo reboot
+```
+
+`tablet-setup.sh` runs: system update → wallpaper + Plymouth branding →
+RustDesk → Chrome kiosk → tablet tweaks → updates off.
+
+Tablet tweaks (`scripts/tablet_tweaks.sh`, tablet profile only):
+
+- Screen auto-rotation locked (mount portrait? rotate once in
+  Settings → Displays first — the lock only stops the accelerometer).
+- On-screen keyboard stays enabled so portal text fields are usable
+  (tablets have no physical keyboard).
+- Suspend made impossible: power button ignored, sleep targets masked,
+  no screen dim on battery. Hold the power button for a hard power-off.
+- No notification banners over the kiosk; GNOME welcome tour removed.
+
+Requirements: x86_64 tablet (check before wiping Windows — no ARM),
+Ubuntu Desktop 24.04 LTS, 4 GB RAM minimum.
+
 ## Scripts
 
 | Script | Purpose |
