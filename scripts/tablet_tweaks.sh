@@ -6,16 +6,15 @@ set -euo pipefail
 # Tablet-specific hardening for kiosk viewer devices. Run by tablet-setup.sh
 # (deliberately NOT numbered so the full IPC setup.sh doesn't pick it up).
 #
-#   - Locks screen auto-rotation (warehouse tablets get bumped and flipped)
+#   - Auto-rotation ON by default: screen AND touch follow how the tablet is
+#     held (requires iio-sensor-proxy, installed here). For wall-mounted
+#     units, freeze it instead with:  LOCK_ROTATION=1 ./tablet_tweaks.sh
 #   - Keeps the on-screen keyboard AVAILABLE (no physical keyboard — portal
 #     text fields must pop the OSK)
 #   - No notification banners over the kiosk
 #   - Suspend is impossible: power button ignored, sleep targets masked
 #   - No screen dimming on battery
 #   - Removes the GNOME first-login welcome tour
-#
-# If a tablet is mounted portrait, rotate once in Settings -> Displays
-# (the lock only stops the accelerometer from flipping it afterwards).
 # ---------------------------------------------------------------------------
 
 REPO="CleanEconomics/ubuntuscript2"
@@ -36,7 +35,17 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # --- 1. System-wide GNOME settings (dconf) ------------------------------------
-echo "🖥️  Writing system-wide GNOME tablet settings..."
+# Auto-rotation needs the sensor daemon; harmless if no accelerometer exists.
+apt install -y iio-sensor-proxy 2>/dev/null || true
+
+# LOCK_ROTATION=1 freezes the current orientation (wall mounts); default 0
+# lets screen + touch follow the accelerometer.
+ORIENTATION_LOCK="false"
+if [[ "${LOCK_ROTATION:-0}" == "1" ]]; then
+  ORIENTATION_LOCK="true"
+fi
+
+echo "🖥️  Writing system-wide GNOME tablet settings (rotation lock: $ORIENTATION_LOCK)..."
 mkdir -p /etc/dconf/profile /etc/dconf/db/local.d
 if [[ ! -f /etc/dconf/profile/user ]]; then
   printf 'user-db:user\nsystem-db:local\n' > /etc/dconf/profile/user
@@ -44,9 +53,9 @@ elif ! grep -q '^system-db:local$' /etc/dconf/profile/user; then
   echo 'system-db:local' >> /etc/dconf/profile/user
 fi
 
-cat > /etc/dconf/db/local.d/01-tablet-kiosk <<'EOF'
+cat > /etc/dconf/db/local.d/01-tablet-kiosk <<EOF
 [org/gnome/settings-daemon/peripherals/touchscreen]
-orientation-lock=true
+orientation-lock=$ORIENTATION_LOCK
 
 [org/gnome/desktop/a11y/applications]
 screen-keyboard-enabled=true
@@ -68,7 +77,11 @@ lock-enabled=false
 idle-activation-enabled=false
 EOF
 dconf update
-echo "✅ rotation locked, OSK on, banners off, power/idle hardened"
+if [[ "$ORIENTATION_LOCK" == "true" ]]; then
+  echo "✅ rotation LOCKED (LOCK_ROTATION=1), OSK on, banners off, power/idle hardened"
+else
+  echo "✅ auto-rotation ON (screen + touch follow the tablet), OSK on, banners off, power/idle hardened"
+fi
 
 # --- 2. Make suspend impossible at the OS level --------------------------------
 echo "🔌 Masking suspend/sleep targets and power keys..."
@@ -92,7 +105,11 @@ apt purge -y gnome-initial-setup 2>/dev/null || true
 echo ""
 echo "==============================="
 echo "✅ Tablet tweaks applied"
-echo "   Rotation:  locked (rotate once in Settings->Displays if portrait)"
+if [[ "$ORIENTATION_LOCK" == "true" ]]; then
+  echo "   Rotation:  LOCKED to current orientation (wall-mount mode)"
+else
+  echo "   Rotation:  automatic — screen and touch follow how the tablet is held"
+fi
 echo "   Keyboard:  on-screen keyboard enabled for portal inputs"
 echo "   Suspend:   disabled at GNOME + systemd level"
 echo "==============================="
