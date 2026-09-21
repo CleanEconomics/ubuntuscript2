@@ -477,13 +477,16 @@ cat > "$KIOSK_DIR/connecting.html" <<EOF
 <html lang="en"><head><meta charset="utf-8"><title>Connecting</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  html,body{height:100%;margin:0;background:#0f172a;color:#e2e8f0;font:20px/1.5 system-ui,sans-serif}
+  html,body{height:100%;margin:0;background:#ffffff;color:#1f2937;font:20px/1.5 system-ui,sans-serif}
   body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px}
-  .spin{width:56px;height:56px;border:6px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:s 1s linear infinite}
+  img{width:min(40vw,320px);height:auto}
+  .spin{width:56px;height:56px;border:6px solid #dbe3ee;border-top-color:#0033a0;border-radius:50%;animation:s 1s linear infinite}
   @keyframes s{to{transform:rotate(360deg)}}
-  small{color:#94a3b8;font-size:14px}
+  small{color:#6b7280;font-size:14px}
 </style></head>
 <body>
+  <!-- client logo installed by 06_plymouth.sh; hidden if that step was skipped -->
+  <img src="file:///usr/share/plymouth/themes/client-brand/logo.png" alt="" onerror="this.style.display='none'">
   <div class="spin"></div>
   <div>Connecting to the portal…</div>
   <small id="s">$KIOSK_URL</small>

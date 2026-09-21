@@ -97,6 +97,50 @@ Do these while Windows is still on the device — they can't be done afterwards.
    create the kiosk user (e.g. `operator`), finish, reboot, connect Wi-Fi,
    then run the tablet install command above.
 
+### Orientation: making screen, splash and touch all agree
+
+Rugged tablets often have the panel mounted rotated or upside down relative
+to what Linux assumes, and some have the touch sensor mirrored against the
+panel. Fix it in this order, and **never by flipping the brand images** (the
+splash assets in `client-brand/` are stored right-way-up; the previous copies
+were pre-flipped for one upside-down unit and have been corrected):
+
+1. **Whole display wrong way up or sideways at every stage (splash, login,
+   kiosk)?** That's the panel. Re-run the tablet tweaks with `BOOT_ROTATION`
+   — this sets the kernel `panel_orientation`, so the Plymouth splash, GDM,
+   the GNOME session **and the touch mapping** all rotate together:
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/scripts/tablet_tweaks.sh \
+     | sudo BOOT_ROTATION=inverted bash      # upside down  (or: left | right)
+   sudo reboot
+   ```
+
+   `BOOT_ROTATION` also locks auto-rotation (wall-mount mode). Add
+   `LOCK_ROTATION=0` if the unit is handheld and should still auto-rotate.
+
+2. **Display is right but touch is mirrored** (touch the top-left corner,
+   cursor lands elsewhere)? Only now touch the touch matrix:
+
+   | touch top-left, cursor lands… | run |
+   | --- | --- |
+   | bottom-right | `sudo FLIP=xy bash scripts/touch_fix.sh` |
+   | top-right | `sudo FLIP=x bash scripts/touch_fix.sh` |
+   | bottom-left | `sudo FLIP=y bash scripts/touch_fix.sh` |
+   | rotated 90° | `sudo ROTATE=90 bash scripts/touch_fix.sh` (or `270`) |
+
+   Or bake it into provisioning: `TOUCH_FLIP=x` / `TOUCH_ROTATE=90` on the
+   `tablet_tweaks.sh` command line. Undo with `FLIP=none`.
+
+3. **Auto-rotation flips the screen the wrong way a few seconds after boot**
+   (upside down in every position)? The accelerometer is mounted rotated:
+   `sudo MODE=180 bash scripts/rotate_fix.sh` (or `90` / `270`), or
+   `ACCEL_FIX=180` on the `tablet_tweaks.sh` command line.
+
+Quick check after a reboot: the Boeing wordmark on the splash reads
+left-to-right, the kiosk comes up the same way, and touching each corner of
+the screen puts the pointer in that same corner.
+
 ### Using a tablet as the IPC
 
 A strong tablet can be the IPC itself. Run the **full** install on exactly
