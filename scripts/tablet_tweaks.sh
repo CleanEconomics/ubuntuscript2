@@ -36,7 +36,8 @@ fi
 
 # --- 1. System-wide GNOME settings (dconf) ------------------------------------
 # Auto-rotation needs the sensor daemon; harmless if no accelerometer exists.
-apt install -y iio-sensor-proxy 2>/dev/null || true
+# dconf-cli provides `dconf update` (not guaranteed on a minimal desktop).
+apt install -y iio-sensor-proxy dconf-cli 2>/dev/null || true
 
 # LOCK_ROTATION=1 freezes the current orientation (wall mounts); default 0
 # lets screen + touch follow the accelerometer. Setting BOOT_ROTATION (a fixed

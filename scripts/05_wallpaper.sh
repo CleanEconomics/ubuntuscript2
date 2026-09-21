@@ -5,9 +5,18 @@ echo "🖼️ Setting wallpaper..."
 # Wallpaper URL and filename
 WALLPAPER_URL="https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/background2.png"
 
-# Detect logged-in GUI user (not root)
-REAL_USER=$(logname 2>/dev/null || who | awk '{print $1; exit}')
-USER_HOME=$(eval echo "~$REAL_USER")
+# Detect the GUI user (never root). SUDO_USER is the reliable one under
+# `curl | sudo bash`; logname often fails in GUI terminals. Last resort: the
+# first regular account.
+REAL_USER="${SUDO_USER:-$(logname 2>/dev/null || who | awk '{print $1; exit}')}"
+if [[ -z "$REAL_USER" || "$REAL_USER" == "root" ]]; then
+  REAL_USER="$(getent passwd | awk -F: '$3>=1000 && $3<65534 {print $1; exit}')"
+fi
+if [[ -z "$REAL_USER" ]]; then
+  echo "⚠️  Could not determine a GUI user — skipping wallpaper."
+  exit 0
+fi
+USER_HOME="$(getent passwd "$REAL_USER" | cut -d: -f6)"
 WALLPAPER_PATH="$USER_HOME/Pictures/ubuntu-background.png"
 USER_ID=$(id -u "$REAL_USER")
 

@@ -76,8 +76,18 @@ run_remote_script() {
 # --------------------------------------------
 # Run all numbered scripts in order
 # --------------------------------------------
-SCRIPT_LIST=$(curl -fsSL "https://api.github.com/repos/$REPO/contents/scripts?ref=$BRANCH" \
-  | grep '"name":' | cut -d '"' -f 4 | grep '^[0-9][0-9]_.*\.sh' | sort)
+SCRIPT_LIST=$(curl -fsSL "https://api.github.com/repos/$REPO/contents/scripts?ref=$BRANCH" 2>/dev/null \
+  | grep '"name":' | cut -d '"' -f 4 | grep '^[0-9][0-9]_.*\.sh' | sort || true)
+
+# The GitHub API is rate-limited (60 req/h unauthenticated). If it answers
+# with nothing, fall back to the known list instead of "completing" a
+# provision that ran zero steps.
+if [[ -z "$SCRIPT_LIST" ]]; then
+  echo "⚠️  Could not list scripts via the GitHub API — using the built-in step list."
+  SCRIPT_LIST="00_logging.sh 01_system_update.sh 02_node_stack.sh 03_python_docker.sh
+04_beremiz.sh 05_wallpaper.sh 06_plymouth.sh 07_anydesk_install.sh 08_kiosk.sh
+09_doorlog.sh 10_disable_updates.sh 99_finish.sh"
+fi
 
 for script in $SCRIPT_LIST; do
   run_remote_script "$script"

@@ -11,7 +11,7 @@ set -e
 #
 #   included: system update, wallpaper + Plymouth branding, RustDesk remote
 #             support, Google Chrome kiosk, tablet tweaks (rotation lock,
-#             on-screen keyboard, no suspend), automatic updates OFF
+#             on-screen keyboard, no suspend), automatic updates OFF, VS Code
 #   skipped:  02 node stack, 03 python/docker, 04 beremiz, 09 doorlog
 #
 # Usage — the kiosk target is REQUIRED (no hardcoded default):
@@ -41,6 +41,7 @@ TABLET_SCRIPTS=(
   08_kiosk.sh
   tablet_tweaks.sh
   10_disable_updates.sh
+  11_vscode.sh
 )
 
 # --------------------------------------------
