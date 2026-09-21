@@ -446,6 +446,11 @@ fi
 #                               sound without waiting for a first tap, so an
 #                               alert is audible even right after a reboot
 #
+# No --incognito: the portal's login cookie and per-station settings
+# (localStorage) must survive a reboot, or the operator logs in again every
+# boot and long-running station state is lost. The persistent profile lives in
+# \$PROFILE; history is still not kept (SavingBrowserHistoryDisabled policy).
+#
 # Relaunch loop: if Chrome crashes, is killed, or somehow gets closed, the
 # kiosk comes straight back instead of leaving a bare desktop until reboot.
 while true; do
@@ -464,7 +469,6 @@ while true; do
     --ignore-certificate-errors \\
     --autoplay-policy=no-user-gesture-required \\
     --test-type \\
-    --incognito \\
     \$OZONE
   # Chrome exited. If the portal is up now, go straight to it on relaunch.
   if curl -fsSk --max-time 2 "\$URL" >/dev/null 2>&1; then TARGET="\$URL"; fi
