@@ -9,7 +9,7 @@ set -euo pipefail
 # (Wayland) session set up by the other scripts in this repo.
 #
 # The target URL is REQUIRED — there is no hardcoded default. Pass one of:
-#   APPLIANCE_URL='http://DASHBOARD_HOST/login?callbackUrl=%2Fadmin'  (full URL)
+#   APPLIANCE_URL='https://DASHBOARD_HOST/'  (full URL)
 #   APPLIANCE_IP=192.168.1.50                                            (becomes http://<ip>)
 #   KIOSK_URL='http://host:port/path'                                    (same as APPLIANCE_URL)
 #
@@ -442,6 +442,9 @@ fi
 # --ignore-certificate-errors : accept the appliance's self-signed cert (no
 #                               "Your connection is not private" interstitial)
 # --test-type                 : suppress the warning bar those flags would show
+# --autoplay-policy=...       : let the dashboard's station buzzer (Web Audio)
+#                               sound without waiting for a first tap, so an
+#                               alert is audible even right after a reboot
 #
 # Relaunch loop: if Chrome crashes, is killed, or somehow gets closed, the
 # kiosk comes straight back instead of leaving a bare desktop until reboot.
@@ -459,6 +462,7 @@ while true; do
     --overscroll-history-navigation=0 \\
     --password-store=basic \\
     --ignore-certificate-errors \\
+    --autoplay-policy=no-user-gesture-required \\
     --test-type \\
     --incognito \\
     \$OZONE
