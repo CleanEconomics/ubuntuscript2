@@ -50,7 +50,8 @@ sudo reboot
 ```
 
 `tablet-setup.sh` runs: system update → wallpaper + Plymouth branding →
-RustDesk → Chrome kiosk → tablet tweaks → updates off.
+RustDesk (viewer + remote-support host in one) → Chrome kiosk → tablet tweaks →
+updates off → VS Code.
 
 Tablet tweaks (`scripts/tablet_tweaks.sh`, tablet profile only):
 
@@ -65,6 +66,36 @@ Tablet tweaks (`scripts/tablet_tweaks.sh`, tablet profile only):
 
 Requirements: x86_64 tablet (check before wiping Windows — no ARM),
 Ubuntu Desktop 24.04 LTS, 4 GB RAM minimum.
+
+### Before wiping Windows on a rugged tablet (checklist)
+
+Do these while Windows is still on the device — they can't be done afterwards.
+
+1. **Confirm the CPU is x86_64.** Settings → System → About → "System type"
+   must say *x64-based processor*. (Or on the Windows setup screen press
+   Shift+F10 for a command prompt and run `echo %PROCESSOR_ARCHITECTURE%` —
+   it must print `AMD64`.) If it says ARM, stop: this repo won't work.
+2. **Put the barcode scanner module in USB keyboard-wedge (HID-KBW) mode**
+   with a suffix of Enter/CR. The mode is stored inside the scanner module,
+   so it survives the OS wipe. Use the vendor's scan-to-configure sheet or
+   its Windows scanner tool; note the module brand from Device Manager
+   (Honeywell, Newland, Zebra, …) — you'll want it if the dashboard talks to
+   the scanner directly over serial/HID instead of as a keyboard.
+3. **Find the boot-menu key** (usually F7, F12, Esc or Del on these units)
+   and make sure Secure Boot is off or set to "Other OS" in the BIOS.
+   Ubuntu boots with Secure Boot on, but many rugged tablets need it off
+   for the USB installer to appear in the boot menu.
+4. **Make the installer USB on a Mac:** download the Ubuntu Desktop 24.04
+   LTS ISO, then either use balenaEtcher, or in Terminal:
+   `diskutil list` → find the stick (e.g. `disk4`) →
+   `diskutil unmountDisk /dev/disk4` →
+   `sudo dd if=~/Downloads/ubuntu-24.04*-desktop-amd64.iso of=/dev/rdisk4 bs=4m status=progress`
+   → `diskutil eject /dev/disk4`. A USB-C stick plugs straight in; a USB-A
+   stick needs a USB-C hub (pick a hub with power pass-through if the
+   tablet has a single USB-C port).
+5. Boot the tablet from the stick, choose *Erase disk and install Ubuntu*,
+   create the kiosk user (e.g. `operator`), finish, reboot, connect Wi-Fi,
+   then run the tablet install command above.
 
 ### Using a tablet as the IPC
 
@@ -102,6 +133,7 @@ and WAGO PLCs only allow a few concurrent Modbus TCP connections.
 | `08_kiosk.sh` | Boot into a full-screen Google Chrome kiosk |
 | `09_doorlog.sh` | Permanent door-event history logger (PLC → SQLite) |
 | `10_disable_updates.sh` | Turn off all automatic updates (appliance mode) |
+| `11_vscode.sh` | Visual Studio Code (Microsoft apt repo, `.deb` fallback) for on-device work on the dashboard/scanner code |
 | `99_finish.sh` | Version summary |
 
 ## Kiosk mode (`08_kiosk.sh`)
@@ -125,6 +157,27 @@ mode on login, inside the existing GNOME/Wayland session.
 - Hides the mouse pointer when idle and suppresses Chrome's crash-restore prompt.
 - Installs Google Chrome automatically (Google's apt repo, with a direct `.deb`
   fallback) if not present.
+- **Can't be escaped.** A locked system-wide dconf profile removes every way
+  out of the GNOME session under Chrome: Super/overview, Alt+Tab, Alt+F4,
+  Ctrl+Alt+T, Alt+F2, the hot corner, workspace switching, log out, lock
+  screen, quick settings. `KIOSK_HARDEN=0` skips this for a bench unit.
+- **Comes back by itself.** The launcher relaunches Chrome if it ever exits
+  or crashes, and if the portal isn't up yet at boot it shows a local
+  "Connecting…" page that polls and jumps to the portal the moment it answers
+  — no dead error page, no reboot needed.
+- **Scanner and camera code in the portal works.** The portal is plain
+  `http://`, which Chrome treats as insecure and would silently refuse
+  `getUserMedia` (camera barcode/QR scanning), Web Serial and WebHID. The
+  managed policy marks the kiosk origin as secure, pre-grants the camera,
+  and pre-approves serial ports and HID devices for that origin, so nothing
+  ever waits on a permission prompt nobody can click. The kiosk user is added
+  to `dialout`/`plugdev` and hidraw devices are opened to `plugdev`, so a
+  scanner module on `/dev/ttyUSB*`, `/dev/ttyACM*` or `hidraw*` is readable.
+  A scanner in USB keyboard-wedge mode needs nothing extra: its keystrokes
+  land in whatever field the dashboard has focused.
+- **Maintenance without leaving the lockdown.** Over RustDesk (or a bench
+  keyboard), `/opt/kiosk/dev-mode.sh` pauses the kiosk and opens a terminal
+  and VS Code; `/opt/kiosk/kiosk-mode.sh` (or a reboot) brings the kiosk back.
 
 Run the kiosk step directly (URL is required — set it in the terminal):
 

@@ -32,7 +32,15 @@ fi
 
 # --- 3. Download & install RustDesk ---
 RUSTDESK_VER="1.4.2"
-RUSTDESK_DEB="rustdesk-${RUSTDESK_VER}-x86_64.deb"
+# RustDesk ships one .deb that is both the viewer (client) and the host
+# (remote-support target). Pick the build for this CPU.
+case "$(uname -m)" in
+  x86_64)          RUSTDESK_ARCH="x86_64" ;;
+  aarch64|arm64)   RUSTDESK_ARCH="aarch64" ;;
+  armv7l)          RUSTDESK_ARCH="armv7" ;;
+  *) RUSTDESK_ARCH="x86_64"; echo "⚠️  Unknown CPU $(uname -m) — trying the x86_64 build." ;;
+esac
+RUSTDESK_DEB="rustdesk-${RUSTDESK_VER}-${RUSTDESK_ARCH}.deb"
 RUSTDESK_URL="https://github.com/rustdesk/rustdesk/releases/download/${RUSTDESK_VER}/${RUSTDESK_DEB}"
 
 echo "⬇️  Downloading RustDesk ${RUSTDESK_VER}..."
