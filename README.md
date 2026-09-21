@@ -118,19 +118,42 @@ were pre-flipped for one upside-down unit and have been corrected):
 1. **Whole display wrong way up or sideways at every stage (splash, login,
    kiosk)?** That's the panel. Re-run the tablet tweaks with `BOOT_ROTATION`
    — this sets the kernel `panel_orientation`, so the Plymouth splash, GDM,
-   the GNOME session **and the touch mapping** all rotate together:
+   the GNOME session **and the touch mapping** all rotate together.
+
+   Pick the value from what you see **before** any fix:
+
+   | picture is… | use |
+   | --- | --- |
+   | sideways (90° off) | `BOOT_ROTATION=left` — if it then lands upside down, re-run with `right` |
+   | upside down (180°) | `BOOT_ROTATION=inverted` |
+   | correct | `BOOT_ROTATION=normal` (or leave it out) |
+
+   Many 10" tablets (e.g. the S101AYCR110) have a natively **portrait**
+   1200×1920 panel that Windows turns to landscape. Used landscape under
+   Linux they come up **sideways**, so they need `left`/`right` — `inverted`
+   can never fix a 90° offset. While Windows is still on the unit you can
+   check: a native resolution taller than it is wide means portrait panel.
 
    ```bash
    curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/scripts/tablet_tweaks.sh \
-     | sudo BOOT_ROTATION=inverted bash      # upside down  (or: left | right)
+     | sudo BOOT_ROTATION=left bash      # sideways (or: right | inverted | normal)
    sudo reboot
    ```
 
    `BOOT_ROTATION` also locks auto-rotation (wall-mount mode). Add
    `LOCK_ROTATION=0` if the unit is handheld and should still auto-rotate.
 
+   Applying `BOOT_ROTATION` also **clears older fixes that would now
+   double-correct**: the `touch_fix.sh` rule, the `rotate_fix.sh` sensor
+   correction, and any saved GNOME display layout (`monitors.xml` for each
+   user and the login screen — renamed to `monitors.xml.bak-<date>`, not
+   deleted). Re-running with a different value is safe; the previous
+   rotation is replaced, not stacked. Don't rotate the display from GNOME
+   Settings afterwards — that saves a new `monitors.xml` on top.
+
 2. **Display is right but touch is mirrored** (touch the top-left corner,
-   cursor lands elsewhere)? Only now touch the touch matrix:
+   cursor lands elsewhere)? Reboot after step 1 and re-test first — step 1
+   usually fixes touch too. Only if it's still wrong, set the touch matrix:
 
    | touch top-left, cursor lands… | run |
    | --- | --- |
@@ -140,7 +163,8 @@ were pre-flipped for one upside-down unit and have been corrected):
    | rotated 90° | `sudo ROTATE=90 bash scripts/touch_fix.sh` (or `270`) |
 
    Or bake it into provisioning: `TOUCH_FLIP=x` / `TOUCH_ROTATE=90` on the
-   `tablet_tweaks.sh` command line. Undo with `FLIP=none`.
+   `tablet_tweaks.sh` command line (it's applied after the step-1 cleanup,
+   so it sticks). Undo with `FLIP=none`.
 
 3. **Auto-rotation flips the screen the wrong way a few seconds after boot**
    (upside down in every position)? The accelerometer is mounted rotated:

@@ -15,6 +15,9 @@ set -euo pipefail
 #   - Suspend is impossible: power button ignored, sleep targets masked
 #   - No screen dimming on battery
 #   - Removes the GNOME first-login welcome tour
+#   - Optional BOOT_ROTATION=left|right|inverted|normal fixes a panel mounted
+#     rotated (splash + login + session + touch) and clears older, now
+#     conflicting rotation/touch fixes — see section 4
 # ---------------------------------------------------------------------------
 
 REPO="CleanEconomics/ubuntuscript2"
@@ -111,6 +114,41 @@ apt purge -y gnome-initial-setup 2>/dev/null || true
 # login screen, the GNOME session, AND the touch mapping all come up rotated
 # together. left = portrait with the top toward the tablet's left edge; if
 # yours lands upside down, use right instead.
+#
+# Many 10" tablets have a natively PORTRAIT panel (e.g. 1200x1920) that
+# Windows turns to landscape. Used landscape under Linux, those need left or
+# right (a 90 degree fix) — inverted (180) can never correct them.
+#
+# Because the kernel rotation already carries touch and the splash with it,
+# earlier per-layer fixes would now double-correct. When BOOT_ROTATION is
+# applied, this also clears: the touch_fix.sh udev rule, the rotate_fix.sh
+# sensor hwdb, and saved GNOME monitors.xml rotations (backed up, not
+# deleted). TOUCH_FLIP/TOUCH_ROTATE/ACCEL_FIX below re-add fixes if passed.
+clear_stale_rotation_fixes() {
+  local stamp f
+  stamp="$(date +'%Y%m%d-%H%M%S')"
+
+  if [[ -f /etc/udev/rules.d/99-kiosk-touch.rules ]]; then
+    rm -f /etc/udev/rules.d/99-kiosk-touch.rules
+    udevadm control --reload-rules 2>/dev/null || true
+    echo "🧹 Removed old touch calibration (99-kiosk-touch.rules)"
+  fi
+  if [[ -f /etc/udev/hwdb.d/61-kiosk-sensor.hwdb ]]; then
+    rm -f /etc/udev/hwdb.d/61-kiosk-sensor.hwdb
+    systemd-hwdb update 2>/dev/null || true
+    echo "🧹 Removed old accelerometer correction (61-kiosk-sensor.hwdb)"
+  fi
+
+  # A saved monitors.xml transform is applied ON TOP of the panel orientation,
+  # which is how a correct BOOT_ROTATION still comes up sideways/upside down.
+  for f in /home/*/.config/monitors.xml /root/.config/monitors.xml \
+           /var/lib/gdm3/.config/monitors.xml; do
+    [[ -f "$f" ]] || continue
+    mv "$f" "$f.bak-$stamp"
+    echo "🧹 Cleared saved display layout: $f (backup: $f.bak-$stamp)"
+  done
+}
+
 if [[ -n "${BOOT_ROTATION:-}" ]]; then
   ORIENT=""; FBROT=0
   case "$BOOT_ROTATION" in
@@ -141,6 +179,7 @@ if [[ -n "${BOOT_ROTATION:-}" ]]; then
       if grep -q "panel_orientation=$ORIENT" /etc/default/grub; then
         update-grub
         echo "✅ Boot orientation set (video=$CONN:panel_orientation=$ORIENT)"
+        clear_stale_rotation_fixes
       else
         echo "⚠️  Could not edit GRUB_CMDLINE_LINUX_DEFAULT in /etc/default/grub — boot rotation not applied."
       fi
