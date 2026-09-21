@@ -10,7 +10,7 @@ Nothing is hardcoded — you pass the kiosk URL (and PLC address, if using the
 door logger) on the command line. Change only the first two lines:
 
 ```bash
-URL='http://DASHBOARD_HOST/login?callbackUrl=%2Fadmin'   # <-- kiosk target
+URL='https://DASHBOARD_HOST/'   # <-- kiosk target
 PLC=SET_PLC_IP_HERE                                         # <-- Modbus PLC (door logger)
 sudo apt update && sudo apt install -y curl && \
 curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/setup.sh -o setup.sh && \
@@ -18,6 +18,16 @@ chmod +x setup.sh && \
 sudo APPLIANCE_URL="$URL" PLC_HOST="$PLC" ./setup.sh && \
 sudo reboot
 ```
+
+`DASHBOARD_HOST` is the TaskOrder dashboard's address — **it is deliberately
+not written in this public repo**; get it from the project's private notes.
+The dashboard is served by nginx on 443 with a self-signed certificate (the
+kiosk accepts it automatically; 80 redirects to 443). Unauthenticated hits
+land on `/login` and bounce back to the path you gave, so `https://DASHBOARD_HOST/`
+lands on the main dashboard after sign-in, and
+`https://DASHBOARD_HOST/login?callbackUrl=%2Fwork-orders` lands on the work
+orders board. Tablets need internet access (Wi-Fi) to reach it. Old/decommissioned
+hosts must not be used — check the private notes for the current one.
 
 `setup.sh` fetches every numbered script in `scripts/` and runs them in order;
 a failing step is reported and skipped, never silently aborting the rest.
@@ -30,7 +40,7 @@ For Linux tablets that just display the portal — no Node-RED/Docker/Beremiz,
 no door logger (that stays on the IPC). Change only the `URL=` line:
 
 ```bash
-URL='http://DASHBOARD_HOST/login?callbackUrl=%2Fadmin'   # <-- change this only
+URL='https://DASHBOARD_HOST/'   # <-- change this only
 sudo apt update && sudo apt install -y curl && \
 curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/tablet-setup.sh -o tablet-setup.sh && \
 chmod +x tablet-setup.sh && \
@@ -45,7 +55,7 @@ Hand-typing because copy/paste isn't available? Use the hyphen-free alias
 sudo apt update
 sudo apt install curl
 wget https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/tablet.sh
-sudo APPLIANCE_URL='http://DASHBOARD_HOST/login?callbackUrl=%2Fadmin' bash tablet.sh
+sudo APPLIANCE_URL='https://DASHBOARD_HOST/' bash tablet.sh
 sudo reboot
 ```
 
@@ -148,7 +158,7 @@ one device (it becomes the system of record — the only one running the door
 logger), then apply the tablet tweaks on top:
 
 ```bash
-URL='http://DASHBOARD_HOST/login?callbackUrl=%2Fadmin'   # <-- kiosk target
+URL='https://DASHBOARD_HOST/'   # <-- kiosk target
 PLC=SET_PLC_IP_HERE                                         # <-- Modbus PLC
 sudo apt update && sudo apt install -y curl && \
 curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/setup.sh -o setup.sh && \
