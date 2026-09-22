@@ -65,9 +65,9 @@ updates off → VS Code.
 
 Tablet tweaks (`scripts/tablet_tweaks.sh`, tablet profile only):
 
-- Auto-rotation ON: screen and touch follow how the tablet is held
-  (`iio-sensor-proxy`). For wall-mounted units, freeze it with
-  `LOCK_ROTATION=1` when running `tablet_tweaks.sh`.
+- Rotation locked by default, so a mis-mounted accelerometer can't flip
+  the kiosk screen on its own. For a handheld unit that should follow how
+  it is held, pass `LOCK_ROTATION=0`.
 - On-screen keyboard stays enabled so portal text fields are usable
   (tablets have no physical keyboard).
 - Suspend made impossible: power button ignored, sleep targets masked,
@@ -104,8 +104,14 @@ Do these while Windows is still on the device — they can't be done afterwards.
    stick needs a USB-C hub (pick a hub with power pass-through if the
    tablet has a single USB-C port).
 5. Boot the tablet from the stick, choose *Erase disk and install Ubuntu*,
-   create the kiosk user (e.g. `operator`), finish, reboot, connect Wi-Fi,
-   then run the tablet install command above.
+   create the kiosk user (e.g. `operator`), then **click Install on the
+   "Review your choices" screen and wait for "Installation complete"** —
+   nothing is written to the disk before that, so stopping earlier boots
+   back into the installer every time. Restart, **pull the stick out as soon
+   as the screen goes black** (the "remove the installation medium" prompt
+   is often skipped), connect Wi-Fi, then run the tablet install command
+   above. **Note whether the installer screen was the right way round** —
+   that decides the orientation step below.
 
 ### Orientation: making screen, splash and touch all agree
 
@@ -120,28 +126,26 @@ were pre-flipped for one upside-down unit and have been corrected):
    — this sets the kernel `panel_orientation`, so the Plymouth splash, GDM,
    the GNOME session **and the touch mapping** all rotate together.
 
-   Pick the value from what you see **before** any fix:
+   Pick the value from what the **Ubuntu installer screen** looks like —
+   that is the picture before any fix. Don't guess from the hardware: the
+   S101AYCR110 has a native 1200×1920 portrait panel, yet its installer
+   comes up the right way round, and forcing `left` there turned a correct
+   screen sideways.
 
-   | picture is… | use |
+   | installer screen is… | use |
    | --- | --- |
+   | correct | **nothing** — leave `BOOT_ROTATION` out (the S101AYCR110 case) |
    | sideways (90° off) | `BOOT_ROTATION=left` — if it then lands upside down, re-run with `right` |
    | upside down (180°) | `BOOT_ROTATION=inverted` |
-   | correct | `BOOT_ROTATION=normal` (or leave it out) |
-
-   Many 10" tablets (e.g. the S101AYCR110) have a natively **portrait**
-   1200×1920 panel that Windows turns to landscape. Used landscape under
-   Linux they come up **sideways**, so they need `left`/`right` — `inverted`
-   can never fix a 90° offset. While Windows is still on the unit you can
-   check: a native resolution taller than it is wide means portrait panel.
 
    ```bash
    curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/scripts/tablet_tweaks.sh \
-     | sudo BOOT_ROTATION=left bash      # sideways (or: right | inverted | normal)
+     | sudo BOOT_ROTATION=left bash      # only if sideways (or: right | inverted)
    sudo reboot
    ```
 
-   `BOOT_ROTATION` also locks auto-rotation (wall-mount mode). Add
-   `LOCK_ROTATION=0` if the unit is handheld and should still auto-rotate.
+   Rotation stays locked either way (the tablet tweaks lock it by default);
+   add `LOCK_ROTATION=0` if the unit is handheld and should auto-rotate.
 
    Applying `BOOT_ROTATION` also **clears older fixes that would now
    double-correct**: the `touch_fix.sh` rule, the `rotate_fix.sh` sensor

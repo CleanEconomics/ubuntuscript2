@@ -6,9 +6,11 @@ set -euo pipefail
 # Tablet-specific hardening for kiosk viewer devices. Run by tablet-setup.sh
 # (deliberately NOT numbered so the full IPC setup.sh doesn't pick it up).
 #
-#   - Auto-rotation ON by default: screen AND touch follow how the tablet is
-#     held (requires iio-sensor-proxy, installed here). For wall-mounted
-#     units, freeze it instead with:  LOCK_ROTATION=1 ./tablet_tweaks.sh
+#   - Rotation LOCKED by default: kiosk tablets sit in one place, and a
+#     tablet whose accelerometer is mounted differently than Linux assumes
+#     flips the screen on its own a few seconds after boot. For a handheld
+#     unit that should follow how it is held:  LOCK_ROTATION=0 ./tablet_tweaks.sh
+#     (iio-sensor-proxy is installed either way).
 #   - Keeps the on-screen keyboard AVAILABLE (no physical keyboard — portal
 #     text fields must pop the OSK)
 #   - No notification banners over the kiosk
@@ -42,14 +44,11 @@ fi
 # dconf-cli provides `dconf update` (not guaranteed on a minimal desktop).
 apt install -y iio-sensor-proxy dconf-cli 2>/dev/null || true
 
-# LOCK_ROTATION=1 freezes the current orientation (wall mounts); default 0
-# lets screen + touch follow the accelerometer. Setting BOOT_ROTATION (a fixed
-# mount) implies the lock unless LOCK_ROTATION=0 is passed explicitly.
-ORIENTATION_LOCK="false"
-if [[ "${LOCK_ROTATION:-}" == "1" ]]; then
-  ORIENTATION_LOCK="true"
-elif [[ -z "${LOCK_ROTATION:-}" && -n "${BOOT_ROTATION:-}" ]]; then
-  ORIENTATION_LOCK="true"
+# Rotation is locked by default (see header); LOCK_ROTATION=0 lets screen +
+# touch follow the accelerometer instead.
+ORIENTATION_LOCK="true"
+if [[ "${LOCK_ROTATION:-}" == "0" ]]; then
+  ORIENTATION_LOCK="false"
 fi
 
 echo "🖥️  Writing system-wide GNOME tablet settings (rotation lock: $ORIENTATION_LOCK)..."
@@ -85,7 +84,7 @@ idle-activation-enabled=false
 EOF
 dconf update
 if [[ "$ORIENTATION_LOCK" == "true" ]]; then
-  echo "✅ rotation LOCKED (LOCK_ROTATION=1), OSK on, banners off, power/idle hardened"
+  echo "✅ rotation LOCKED (default; LOCK_ROTATION=0 for auto-rotate), OSK on, banners off, power/idle hardened"
 else
   echo "✅ auto-rotation ON (screen + touch follow the tablet), OSK on, banners off, power/idle hardened"
 fi
@@ -115,9 +114,11 @@ apt purge -y gnome-initial-setup 2>/dev/null || true
 # together. left = portrait with the top toward the tablet's left edge; if
 # yours lands upside down, use right instead.
 #
-# Many 10" tablets have a natively PORTRAIT panel (e.g. 1200x1920) that
-# Windows turns to landscape. Used landscape under Linux, those need left or
-# right (a 90 degree fix) — inverted (180) can never correct them.
+# Only set it when the picture is wrong BEFORE any fix — look at the Ubuntu
+# installer screen. Many tablets already come up the right way round (the
+# S101AYCR110 does, despite its native 1200x1920 portrait panel), and
+# forcing a value there turns a correct screen sideways or upside down.
+# Sideways needs left/right (90 deg); inverted (180) can never fix sideways.
 #
 # Because the kernel rotation already carries touch and the splash with it,
 # earlier per-layer fixes would now double-correct. When BOOT_ROTATION is
