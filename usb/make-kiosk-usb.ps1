@@ -4,16 +4,17 @@ the kiosk with no typing on the tablet.
 
 Boot the tablet from the stick and it: checks it's an S101AYCR110 (refuses
 anything else), ERASES the internal drive, installs Ubuntu 24.04 with the
-"operator" account, joins the Wi-Fi, powers off. Pull the stick, power on:
-the first boot runs the normal tablet setup from GitHub (latest code) and
+"operator" account, powers off. Pull the stick, power on, pick the Wi-Fi on
+the login screen (network icon, top right; Ethernet needs nothing): the first
+boot then runs the normal tablet setup from GitHub (latest code) and
 reboots into the kiosk (~30-40 min, no one needs to log in).
 
 Run in PowerShell AS ADMINISTRATOR (it wipes the stick you choose):
   powershell -ExecutionPolicy Bypass -File make-kiosk-usb.ps1 -ApplianceUrl 'https://DASHBOARD_HOST/'
 
-It asks for the Wi-Fi name/password and the tablet's operator password, then
-lists USB drives and asks which one to erase. Passwords are only written to
-the stick (Wi-Fi in plain text, operator password hashed) — keep it safe.
+It asks for the tablet's operator password, lists the USB drives and asks
+which one to erase. Passwords are only written to the stick (operator password hashed; -WifiSsid/-WifiPassword put a Wi-Fi
+network on it in plain text instead of picking it on the tablet).
 
 Needs: the Ubuntu ISO (downloaded if missing), a USB stick of 8 GB or more,
 and openssl (comes with Git for Windows) to hash the password.
@@ -73,12 +74,9 @@ if ((Get-FileHash $IsoPath -Algorithm SHA256).Hash -ne $IsoSha256) { throw "ISO 
 
 # --- Settings ------------------------------------------------------------------------
 Write-Host ''
-if ($PSBoundParameters.ContainsKey('WifiSsid')) { $ssid = $WifiSsid; $wifiPass = $WifiPassword }
-else {
-  $ssid = Read-Host 'Wi-Fi name for the tablet (leave empty for Ethernet only)'
-  $wifiPass = ''
-  if ($ssid) { $wifiPass = ConvertTo-Plain (Read-Host 'Wi-Fi password' -AsSecureString) }
-}
+# Wi-Fi is normally picked on the tablet's login screen at first boot; pass
+# -WifiSsid (and -WifiPassword) only to put a network on the stick instead.
+$ssid = $WifiSsid; $wifiPass = $WifiPassword
 if ($OperatorPassword) { $p1 = $OperatorPassword }
 else {
   do {
@@ -227,7 +225,8 @@ Write-Host "Done - $usbRoot is ready." -ForegroundColor Green
 Write-Host '  1. Plug it into the tablet, power on tapping F7, pick the "UEFI:" USB entry.'
 Write-Host '     The menu on the stick starts the kiosk install by itself after 10 seconds.'
 Write-Host '  2. It erases the tablet, installs Ubuntu and powers OFF (about 15 min).'
-Write-Host '  3. Pull the stick out, power on. First boot runs the kiosk setup (~30-40 min,'
-Write-Host '     the login screen shows meanwhile - leave it) and reboots into the kiosk.'
+Write-Host '  3. Pull the stick out, power on. On the login screen tap the network icon (top'
+Write-Host '     right) and pick the Wi-Fi - or plug in Ethernet. Do not log in.'
+Write-Host '  4. The kiosk setup then runs by itself (~30-40 min) and reboots into the kiosk.'
 Write-Host '  Setup log on the tablet: /var/log/kiosk-firstboot.log'
 exit 0
