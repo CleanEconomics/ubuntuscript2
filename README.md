@@ -90,9 +90,11 @@ Ubuntu Desktop 24.04 LTS, 4 GB RAM minimum.
 
 `usb/make-kiosk-usb.ps1` makes a USB stick that does the whole job: boot the
 tablet from it and it erases the internal drive, installs Ubuntu 24.04 with
-the `operator` account and the Wi-Fi, and powers off. Pull the stick and
-power on: the first boot runs `tablet.sh` (latest code from GitHub) by itself
-and reboots into the kiosk. Nobody has to log in or type.
+the `operator` account, and powers off. Pull the stick, power on, and pick the
+Wi-Fi on the login screen (network icon, top right; the on-screen keyboard
+pops up for the password) or plug in Ethernet. The first boot then runs
+`tablet.sh` (latest code from GitHub) by itself and reboots into the kiosk.
+Nobody has to log in.
 
 On a Windows PC, in **PowerShell as Administrator**, from a copy of this repo:
 
@@ -100,8 +102,8 @@ On a Windows PC, in **PowerShell as Administrator**, from a copy of this repo:
 powershell -ExecutionPolicy Bypass -File usb\make-kiosk-usb.ps1 -ApplianceUrl 'https://DASHBOARD_HOST/'
 ```
 
-It asks for the Wi-Fi name and password and the `operator` password, lists
-the USB drives, and erases only the one you pick after you type `ERASE`.
+It asks for the `operator` password, lists the USB drives, and erases only
+the one you pick after you type `ERASE`.
 Needs a stick of 8 GB or more and Git for Windows (for `openssl`); the Ubuntu
 ISO is downloaded and checked if it isn't in Downloads.
 
@@ -111,11 +113,12 @@ ISO is downloaded and checked if it isn't in Downloads.
   `-Model ''` removes that check.
 - It **powers off** when the install is done. Pull the stick before powering
   on, or it installs again.
-- First-boot setup takes ~30–40 min with the login screen showing; leave it.
-  No internet yet? It retries on every boot. Log:
+- First-boot setup waits until the tablet is online, then takes ~30–40 min
+  with the login screen showing; don't log in. Log:
   `/var/log/kiosk-firstboot.log` (it also prints the RustDesk ID).
-- The Wi-Fi password is on the stick in plain text; the `operator` password
-  only as a hash. Wipe or keep the stick safe afterwards.
+- The `operator` password is on the stick only as a hash. `-WifiSsid` /
+  `-WifiPassword` put a Wi-Fi network on the stick (plain text) instead of
+  picking it on the tablet.
 - Other options: `-TimeZone` (default `America/New_York`), `-Hostname`,
   `-RustDeskPassword`, `-DiskNumber`, `-TargetFolder` (build into a folder
   instead of a stick).

@@ -2,10 +2,11 @@
 # kiosk-firstboot.sh — one-time kiosk provisioning after a USB autoinstall.
 # Installed by the USB stick's autoinstall (usb/make-kiosk-usb.ps1) as
 # /usr/local/sbin/kiosk-firstboot.sh and run by kiosk-firstboot.service on the
-# first boot. It waits for the internet, runs the normal tablet setup
-# (tablet.sh, always the latest from GitHub) with the settings the stick was
-# made with, then disables itself and reboots into the kiosk.
-# If there is no internet yet, it exits and tries again on the next boot.
+# first boot. It waits for the internet (Wi-Fi picked on the login screen,
+# or Ethernet), runs the normal tablet setup (tablet.sh, always the latest
+# from GitHub) with the settings the stick was made with, then disables
+# itself and reboots into the kiosk. If it's interrupted, it starts over on
+# the next boot.
 # Progress: /var/log/kiosk-firstboot.log
 set -u
 LOG=/var/log/kiosk-firstboot.log
@@ -19,16 +20,16 @@ ENV_FILE=/etc/kiosk-firstboot.env
 KIOSK_USER="${KIOSK_USER:-operator}"
 RAW_BASE="https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main"
 
-echo "Waiting for internet (Wi-Fi or Ethernet)..."
-online=0
-for _ in $(seq 1 180); do
-  if curl -fsI --max-time 5 "$RAW_BASE/tablet.sh" >/dev/null 2>&1; then online=1; break; fi
+# No Wi-Fi is set up by the install: someone picks it on the login screen
+# (network icon, top right). Ethernet just works. Wait as long as it takes.
+echo "Waiting for internet — pick the Wi-Fi from the login screen's network menu, or plug in Ethernet..."
+n=0
+until curl -fsI --max-time 5 "$RAW_BASE/tablet.sh" >/dev/null 2>&1; do
+  n=$((n + 1))
+  (( n % 12 == 0 )) && echo "  still offline after $((n / 12)) min"
   sleep 5
 done
-if [[ $online -ne 1 ]]; then
-  echo "No internet after 15 minutes — will try again on the next boot."
-  exit 1
-fi
+echo "Online."
 
 # Ubuntu's own background updates grab the apt lock on a fresh install; stop
 # them so the setup's apt calls don't fail. 10_disable_updates.sh turns them
