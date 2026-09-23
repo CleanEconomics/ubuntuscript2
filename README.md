@@ -68,8 +68,17 @@ Tablet tweaks (`scripts/tablet_tweaks.sh`, tablet profile only):
 - Rotation locked by default, so a mis-mounted accelerometer can't flip
   the kiosk screen on its own. For a handheld unit that should follow how
   it is held, pass `LOCK_ROTATION=0`.
-- On-screen keyboard stays enabled so portal text fields are usable
-  (tablets have no physical keyboard).
+- **Onboard** is the kiosk's touch keyboard: it pops up when a portal text
+  field is tapped (a floating keyboard icon opens it by hand). Chrome runs
+  under X11 so Onboard, and any USB keyboard, can type into it. USB
+  autosuspend is off so a plugged-in keyboard or mouse doesn't go dead.
+- **Tablet set up before this?** Update its keyboard handling from any
+  terminal on it (only dots and slashes to type on the touch keyboard):
+
+  ```bash
+  wget raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/kbfix.sh
+  sudo bash kbfix.sh      # re-applies kiosk + tablet tweaks, then reboots
+  ```
 - Suspend made impossible: power button ignored, sleep targets masked,
   no screen dim on battery. Hold the power button for a hard power-off.
 - No notification banners over the kiosk; GNOME welcome tour removed.
