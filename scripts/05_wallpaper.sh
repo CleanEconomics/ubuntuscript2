@@ -32,6 +32,23 @@ else
   exit 0
 fi
 
+# System-wide default as well: works with nobody logged in (e.g. the USB
+# stick's first-boot setup, where there is no user session to talk to).
+if command -v dconf >/dev/null 2>&1; then
+  mkdir -p /etc/dconf/profile /etc/dconf/db/local.d
+  if [[ ! -f /etc/dconf/profile/user ]]; then
+    printf 'user-db:user\nsystem-db:local\n' > /etc/dconf/profile/user
+  elif ! grep -q '^system-db:local$' /etc/dconf/profile/user; then
+    echo 'system-db:local' >> /etc/dconf/profile/user
+  fi
+  cat > /etc/dconf/db/local.d/04-wallpaper <<EOF
+[org/gnome/desktop/background]
+picture-uri='file://$WALLPAPER_PATH'
+picture-uri-dark='file://$WALLPAPER_PATH'
+EOF
+  dconf update || true
+fi
+
 # Apply wallpaper using user's DBus session
 if command -v gsettings >/dev/null 2>&1; then
   echo "🎨 Applying wallpaper via gsettings (as $REAL_USER)..."

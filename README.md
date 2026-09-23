@@ -86,6 +86,40 @@ Tablet tweaks (`scripts/tablet_tweaks.sh`, tablet profile only):
 Requirements: x86_64 tablet (check before wiping Windows — no ARM),
 Ubuntu Desktop 24.04 LTS, 4 GB RAM minimum.
 
+### One-stick install (no typing on the tablet)
+
+`usb/make-kiosk-usb.ps1` makes a USB stick that does the whole job: boot the
+tablet from it and it erases the internal drive, installs Ubuntu 24.04 with
+the `operator` account and the Wi-Fi, and powers off. Pull the stick and
+power on: the first boot runs `tablet.sh` (latest code from GitHub) by itself
+and reboots into the kiosk. Nobody has to log in or type.
+
+On a Windows PC, in **PowerShell as Administrator**, from a copy of this repo:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File usb\make-kiosk-usb.ps1 -ApplianceUrl 'https://DASHBOARD_HOST/'
+```
+
+It asks for the Wi-Fi name and password and the `operator` password, lists
+the USB drives, and erases only the one you pick after you type `ERASE`.
+Needs a stick of 8 GB or more and Git for Windows (for `openssl`); the Ubuntu
+ISO is downloaded and checked if it isn't in Downloads.
+
+- The stick's boot menu starts the automatic install after 10 seconds, so no
+  keyboard is needed on the tablet. It only erases an **S101AYCR110**
+  (checked in firmware) and stops with an error on anything else;
+  `-Model ''` removes that check.
+- It **powers off** when the install is done. Pull the stick before powering
+  on, or it installs again.
+- First-boot setup takes ~30–40 min with the login screen showing; leave it.
+  No internet yet? It retries on every boot. Log:
+  `/var/log/kiosk-firstboot.log` (it also prints the RustDesk ID).
+- The Wi-Fi password is on the stick in plain text; the `operator` password
+  only as a hash. Wipe or keep the stick safe afterwards.
+- Other options: `-TimeZone` (default `America/New_York`), `-Hostname`,
+  `-RustDeskPassword`, `-DiskNumber`, `-TargetFolder` (build into a folder
+  instead of a stick).
+
 ### Before wiping Windows on a rugged tablet (checklist)
 
 Do these while Windows is still on the device — they can't be done afterwards.
