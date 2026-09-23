@@ -66,6 +66,8 @@ echo "📦 Installing Google Chrome and helpers..."
 apt update -y || true
 # unclutter hides the mouse pointer (X11/XWayland); xdotool is handy for touch
 apt install -y unclutter xdotool curl gnupg ca-certificates || true
+# Onboard is the kiosk's touch keyboard (see "On-screen keyboard" below).
+apt install -y onboard || echo "⚠️  Onboard failed to install — no touch keyboard in the kiosk."
 
 # Install Google Chrome (stable). Prefer Google's signed apt repo so Chrome
 # stays auto-updated; fall back to the direct .deb if the repo route fails.
@@ -370,6 +372,41 @@ else
   echo "ℹ️  KIOSK_HARDEN=0 — GNOME session left open (escapable kiosk)."
 fi
 
+# --- On-screen keyboard (Onboard) -------------------------------------------
+# GNOME's built-in keyboard only pops for Chrome through Chrome's Wayland IME,
+# and that path swallowed keystrokes on the S101 (touch keyboard never showed,
+# USB keyboard typed nothing). So Chrome runs under XWayland (see launcher)
+# and Onboard is the touch keyboard: it types into X11 windows, pops up when
+# a text field gets focus (via accessibility events), and sits on top of the
+# full-screen kiosk. The floating icon opens it by hand if auto-show misses.
+# GNOME's own keyboard stays enabled for native apps (e.g. a tech's terminal).
+mkdir -p /etc/dconf/profile /etc/dconf/db/local.d
+if [[ ! -f /etc/dconf/profile/user ]]; then
+  printf 'user-db:user\nsystem-db:local\n' > /etc/dconf/profile/user
+elif ! grep -q '^system-db:local$' /etc/dconf/profile/user; then
+  echo 'system-db:local' >> /etc/dconf/profile/user
+fi
+cat > /etc/dconf/db/local.d/03-kiosk-onboard <<'EOF'
+[org/gnome/desktop/interface]
+toolkit-accessibility=true
+
+[org/onboard]
+start-minimized=true
+show-status-icon=false
+
+[org/onboard/auto-show]
+enabled=true
+
+[org/onboard/window]
+force-to-top=true
+docking-enabled=true
+docking-edge='bottom'
+
+[org/onboard/icon-palette]
+in-use=true
+EOF
+dconf update 2>/dev/null || echo "⚠️  dconf update failed — Onboard settings apply after next 'sudo dconf update'"
+
 # --- Write the kiosk launcher ----------------------------------------------
 echo "🚀 Writing kiosk launcher to $START_SCRIPT..."
 mkdir -p "$KIOSK_DIR"
@@ -430,13 +467,15 @@ if [ -z "\$TARGET" ]; then
   TARGET="file://$KIOSK_DIR/connecting.html"
 fi
 
-# --- Prefer native Wayland when the session is Wayland ---
-# The IME flags make Chrome tell GNOME when a text field has focus, which is
-# what pops the on-screen touch keyboard on tablets.
-OZONE=""
-if [ "\${XDG_SESSION_TYPE:-}" = "wayland" ]; then
-  OZONE="--ozone-platform=wayland --enable-features=UseOzonePlatform --enable-wayland-ime --wayland-text-input-version=3"
+# --- Touch keyboard: Onboard, with Chrome on X11 ---
+# Onboard can only type into X11 windows, so Chrome runs under XWayland
+# (--ozone-platform=x11). --force-renderer-accessibility reports focused text
+# fields to Onboard so it pops up by itself. Chrome's Wayland IME path is not
+# used: on the S101 it swallowed both touch and USB keyboard input.
+if command -v onboard >/dev/null 2>&1 && ! pgrep -x onboard >/dev/null 2>&1; then
+  (GDK_BACKEND=x11 onboard >/dev/null 2>&1 &)
 fi
+OZONE="--ozone-platform=x11 --force-renderer-accessibility"
 
 # --password-store=basic      : never touch the GNOME keyring (no password prompt)
 # --ignore-certificate-errors : accept the appliance's self-signed cert (no

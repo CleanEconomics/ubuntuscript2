@@ -188,6 +188,20 @@ if [[ -n "${BOOT_ROTATION:-}" ]]; then
   fi
 fi
 
+# --- 4b. Keep USB keyboards/mice powered ---------------------------------------
+# USB autosuspend powers down idle USB devices; on these tablets a plugged-in
+# keyboard or mouse can go dead and stay dead. usbcore.autosuspend=-1 turns
+# it off. USB_AUTOSUSPEND=1 leaves the kernel default alone.
+if [[ "${USB_AUTOSUSPEND:-0}" != "1" ]] && ! grep -q 'usbcore.autosuspend' /etc/default/grub; then
+  sed -i -E 's/^(GRUB_CMDLINE_LINUX_DEFAULT=")/\1usbcore.autosuspend=-1 /' /etc/default/grub
+  if grep -q 'usbcore.autosuspend=-1' /etc/default/grub; then
+    update-grub
+    echo "✅ USB autosuspend off (keyboards/mice stay powered; applies after reboot)"
+  else
+    echo "⚠️  Could not edit /etc/default/grub — USB autosuspend unchanged."
+  fi
+fi
+
 # --- 5. Optional touchscreen calibration ---------------------------------------
 # Some tablet models have the touch sensor mirrored vs the panel. Pass
 # TOUCH_FLIP=x|y|xy or TOUCH_ROTATE=90|270 to bake in the fix (see
@@ -218,6 +232,6 @@ if [[ "$ORIENTATION_LOCK" == "true" ]]; then
 else
   echo "   Rotation:  automatic — screen and touch follow how the tablet is held"
 fi
-echo "   Keyboard:  on-screen keyboard enabled for portal inputs"
+echo "   Keyboard:  Onboard pops up for portal inputs (08_kiosk.sh); USB autosuspend off"
 echo "   Suspend:   disabled at GNOME + systemd level"
 echo "==============================="
