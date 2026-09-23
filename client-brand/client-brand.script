@@ -3,11 +3,39 @@
 # spinner ring below it. Uses only the documented Plymouth script API
 # (Sprite/Image/Math/SetRefreshFunction) — no nonstandard calls.
 
-Window.SetBackgroundTopColor(0.29, 0.42, 0.51);
-Window.SetBackgroundBottomColor(0.16, 0.24, 0.30);
+# flip = 1 draws the whole splash turned 180 degrees, for panels whose boot
+# framebuffer comes up upside down while the desktop is correct. Set by
+# 06_plymouth.sh from SPLASH_ROTATE=180 — leave this line exactly as is.
+flip = 0;
+
+if (flip) {
+    Window.SetBackgroundTopColor(0.16, 0.24, 0.30);
+    Window.SetBackgroundBottomColor(0.29, 0.42, 0.51);
+} else {
+    Window.SetBackgroundTopColor(0.29, 0.42, 0.51);
+    Window.SetBackgroundBottomColor(0.16, 0.24, 0.30);
+}
 
 screen.w = Window.GetWidth();
 screen.h = Window.GetHeight();
+
+# Turn an image 180 degrees when flipped (same size, so layout math holds).
+fun orient(img) {
+    if (flip)
+        return img.Rotate(Math.Pi);
+    return img;
+}
+
+# Place a sprite at its unflipped position; when flipped, mirror it through
+# the screen center so the layout turns with the artwork.
+fun place(sprite, x, y, w, h) {
+    if (flip) {
+        x = screen.w - x - w;
+        y = screen.h - y - h;
+    }
+    sprite.SetX(x);
+    sprite.SetY(y);
+}
 
 # --- Background: scale to cover, centered -----------------------------------
 bg.image = Image("background.png");
@@ -20,20 +48,21 @@ if (bg.image) {
         bg.scale = scale_y;
     bg.scaled = bg.image.Scale(bg.image.GetWidth() * bg.scale,
                                bg.image.GetHeight() * bg.scale);
-    bg.sprite = Sprite(bg.scaled);
-    bg.sprite.SetX(screen.w / 2 - bg.scaled.GetWidth() / 2);
-    bg.sprite.SetY(screen.h / 2 - bg.scaled.GetHeight() / 2);
+    bg.sprite = Sprite(orient(bg.scaled));
+    place(bg.sprite,
+          screen.w / 2 - bg.scaled.GetWidth() / 2,
+          screen.h / 2 - bg.scaled.GetHeight() / 2,
+          bg.scaled.GetWidth(), bg.scaled.GetHeight());
     bg.sprite.SetZ(-100);
 }
 
 # --- Logo: centered ----------------------------------------------------------
 logo.image = Image("logo.png");
 if (logo.image) {
-    logo.sprite = Sprite(logo.image);
+    logo.sprite = Sprite(orient(logo.image));
     logo.x = screen.w / 2 - logo.image.GetWidth() / 2;
     logo.y = screen.h / 2 - logo.image.GetHeight() / 2;
-    logo.sprite.SetX(logo.x);
-    logo.sprite.SetY(logo.y);
+    place(logo.sprite, logo.x, logo.y, logo.image.GetWidth(), logo.image.GetHeight());
     logo.sprite.SetZ(10);
 }
 
@@ -42,13 +71,14 @@ spinner.frame_count = 24;
 spinner.image = Image("spinner.png");
 if (spinner.image) {
     for (i = 0; i < spinner.frame_count; i++)
-        spinner.frame[i] = spinner.image.Rotate(i * 2 * Math.Pi / spinner.frame_count);
+        spinner.frame[i] = spinner.image.Rotate(i * 2 * Math.Pi / spinner.frame_count + flip * Math.Pi);
     spinner.sprite = Sprite(spinner.frame[0]);
-    spinner.sprite.SetX(screen.w / 2 - spinner.image.GetWidth() / 2);
     if (logo.image)
-        spinner.sprite.SetY(logo.y + logo.image.GetHeight() + 40);
+        spinner.y = logo.y + logo.image.GetHeight() + 40;
     else
-        spinner.sprite.SetY(screen.h / 2 + 40);
+        spinner.y = screen.h / 2 + 40;
+    place(spinner.sprite, screen.w / 2 - spinner.image.GetWidth() / 2, spinner.y,
+          spinner.image.GetWidth(), spinner.image.GetHeight());
     spinner.sprite.SetZ(10);
 }
 

@@ -26,6 +26,22 @@ if [[ $ok -ne 1 ]]; then
   exit 1
 fi
 
+# SPLASH_ROTATE=180 turns the splash artwork upside down, for panels whose
+# boot screen comes up inverted while the desktop is fine (the S101AYCR110).
+# It only affects the splash; tablet-setup.sh passes it by default.
+case "${SPLASH_ROTATE:-0}" in
+  180)
+    sed -i 's/^flip = 0;$/flip = 1;/' "$STAGE/$THEME_NAME.script"
+    if grep -qx 'flip = 1;' "$STAGE/$THEME_NAME.script"; then
+      echo "🔄 Splash drawn rotated 180 degrees (SPLASH_ROTATE=180)"
+    else
+      echo "⚠️  Could not set the splash rotation — splash left unrotated."
+    fi
+    ;;
+  0) ;;
+  *) echo "⚠️  SPLASH_ROTATE must be 0 or 180 — splash left unrotated." ;;
+esac
+
 sudo mkdir -p "$THEME_DIR"
 sudo cp "$STAGE"/* "$THEME_DIR"/
 rm -rf "$STAGE"
