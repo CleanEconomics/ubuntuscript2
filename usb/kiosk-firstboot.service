@@ -1,0 +1,13 @@
+[Unit]
+Description=One-time kiosk setup after the USB install (see /var/log/kiosk-firstboot.log)
+Wants=network-online.target
+After=network-online.target NetworkManager.service
+ConditionPathExists=/etc/kiosk-firstboot.env
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/kiosk-firstboot.sh
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
