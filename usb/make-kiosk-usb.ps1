@@ -28,6 +28,7 @@ param(
   [string]$Model = 'S101AYCR110',   # '' = no model check (erases ANY computer booted from it)
   [string]$RustDeskPassword = '',
   [int]$DiskNumber = -1,
+  [switch]$AllowLargeDisk,          # skip the 300 GB "not a USB stick" guard (e.g. fake-capacity sticks)
   # Build into a folder instead of a stick (testing, or to copy onto a stick formatted by hand)
   [string]$TargetFolder = '',
   [string]$WifiSsid = $null, [string]$WifiPassword = '', [string]$OperatorPassword = ''
@@ -109,7 +110,7 @@ if ($DiskNumber -lt 0) { $DiskNumber = [int](Read-Host 'Disk number of the stick
 $disk = $usb | Where-Object { $_.Number -eq $DiskNumber }
 if (-not $disk) { throw "Disk $DiskNumber is not one of the USB drives listed." }
 if ($disk.Size -lt 7GB) { throw 'That stick is too small - it needs 8 GB or more.' }
-if ($disk.Size -gt 300GB) { throw 'That drive is over 300 GB - refusing, it is probably not a USB stick.' }
+if ($disk.Size -gt 300GB -and -not $AllowLargeDisk) { throw 'That drive is over 300 GB - refusing, it is probably not a USB stick (-AllowLargeDisk overrides).' }
 $confirm = Read-Host ("Everything on Disk {0} ({1}) will be erased. Type ERASE to continue" -f $disk.Number, $disk.FriendlyName)
 if ($confirm -cne 'ERASE') { throw 'Cancelled - nothing was changed.' }
 
@@ -117,7 +118,9 @@ if ($confirm -cne 'ERASE') { throw 'Cancelled - nothing was changed.' }
 Write-Host 'Formatting the stick...'
 $disk | Clear-Disk -RemoveData -RemoveOEM -Confirm:$false
 Initialize-Disk -Number $disk.Number -PartitionStyle MBR -ErrorAction SilentlyContinue
-$size = [Math]::Min($disk.Size - 16MB, 32GB)   # Windows formats FAT32 up to 32 GB
+# 16 GB is plenty (Ubuntu needs ~6 GB) and stays near the start of the stick,
+# inside the real capacity of fake "1 TB" sticks.
+$size = [Math]::Min($disk.Size - 16MB, 16GB)
 $part = New-Partition -DiskNumber $disk.Number -Size $size -IsActive -AssignDriveLetter
 Start-Sleep 2
 $vol = Format-Volume -Partition $part -FileSystem FAT32 -NewFileSystemLabel 'KIOSKUSB' -Confirm:$false -Force
