@@ -155,6 +155,21 @@ were pre-flipped for one upside-down unit and have been corrected):
    rotation is replaced, not stacked. Don't rotate the display from GNOME
    Settings afterwards — that saves a new `monitors.xml` on top.
 
+   **Only the boot splash is upside down; login and kiosk are fine?** That's
+   not the panel — don't use `BOOT_ROTATION`, it would turn the desktop too.
+   The splash has its own switch, `SPLASH_ROTATE=180`, which draws the splash
+   artwork turned 180° (the image files stay right-way-up). The S101AYCR110
+   needs it, so `tablet-setup.sh` passes it **by default**; add
+   `SPLASH_ROTATE=0` for a tablet whose splash is already correct, and also
+   whenever you use `BOOT_ROTATION` (the splash follows that rotation).
+   To change it on a unit that's already set up:
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/scripts/06_plymouth.sh \
+     | sudo SPLASH_ROTATE=180 bash      # or SPLASH_ROTATE=0 to undo
+   sudo reboot
+   ```
+
 2. **Display is right but touch is mirrored** (touch the top-left corner,
    cursor lands elsewhere)? Reboot after step 1 and re-test first — step 1
    usually fixes touch too. Only if it's still wrong, set the touch matrix:

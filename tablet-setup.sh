@@ -33,6 +33,11 @@ fi
 TARGET_DISPLAY="${KIOSK_URL:-${APPLIANCE_URL:-http://$APPLIANCE_IP}}"
 export APPLIANCE_URL APPLIANCE_IP KIOSK_URL 2>/dev/null || true
 
+# The S101AYCR110's boot splash comes up upside down while the desktop is
+# correct, so the splash artwork is drawn turned 180 by default.
+# SPLASH_ROTATE=0 for a tablet whose splash is already the right way up.
+export SPLASH_ROTATE="${SPLASH_ROTATE:-180}"
+
 TABLET_SCRIPTS=(
   01_system_update.sh
   05_wallpaper.sh
