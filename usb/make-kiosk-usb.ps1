@@ -4,7 +4,7 @@ the kiosk with no typing on the tablet.
 
 Boot the tablet from the stick and it: checks it's an S101AYCR110 (refuses
 anything else), ERASES the internal drive, installs Ubuntu 24.04 with the
-"operator" account, powers off. Pull the stick, power on, pick the Wi-Fi on
+"kiosk" account, powers off. Pull the stick, power on, pick the Wi-Fi on
 the login screen (network icon, top right; Ethernet needs nothing): the first
 boot then runs the normal tablet setup from GitHub (latest code) and
 reboots into the kiosk (~30-40 min, no one needs to log in).
@@ -12,8 +12,8 @@ reboots into the kiosk (~30-40 min, no one needs to log in).
 Run in PowerShell AS ADMINISTRATOR (it wipes the stick you choose):
   powershell -ExecutionPolicy Bypass -File make-kiosk-usb.ps1 -ApplianceUrl 'https://DASHBOARD_HOST/'
 
-It asks for the tablet's operator password, lists the USB drives and asks
-which one to erase. Passwords are only written to the stick (operator password hashed; -WifiSsid/-WifiPassword put a Wi-Fi
+It asks for the tablet's kiosk password, lists the USB drives and asks
+which one to erase. Passwords are only written to the stick (kiosk password hashed; -WifiSsid/-WifiPassword put a Wi-Fi
 network on it in plain text instead of picking it on the tablet).
 
 Needs: the Ubuntu ISO (downloaded if missing), a USB stick of 8 GB or more,
@@ -24,7 +24,7 @@ param(
   [string]$IsoPath = "$env:USERPROFILE\Downloads\ubuntu-24.04.5.1-desktop-amd64.iso",
   [string]$TimeZone = 'America/New_York',
   [string]$Hostname = 's101-kiosk',
-  [string]$Username = 'operator',
+  [string]$Username = 'kiosk',   # 'operator' is reserved by Ubuntu's installer
   [string]$Model = 'S101AYCR110',   # '' = no model check (erases ANY computer booted from it)
   [string]$RustDeskPassword = '',
   [int]$DiskNumber = -1,
@@ -142,6 +142,7 @@ $kdir = Join-Path $usbRoot 'kiosk'
 New-Item -ItemType Directory -Force $kdir | Out-Null
 Write-Lf (Join-Path $kdir 'firstboot.sh') (Get-UsbFile 'firstboot.sh')
 Write-Lf (Join-Path $kdir 'kiosk-firstboot.service') (Get-UsbFile 'kiosk-firstboot.service')
+Write-Lf (Join-Path $kdir 'prep-disk.sh') (Get-UsbFile 'prep-disk.sh')
 $envText = "APPLIANCE_URL=$(Quote-Sh $ApplianceUrl)`nKIOSK_USER=$(Quote-Sh $Username)`n"
 if ($RustDeskPassword) { $envText += "RUSTDESK_PW=$(Quote-Sh $RustDeskPassword)`n" }
 Write-Lf (Join-Path $kdir 'kiosk-firstboot.env') $envText
@@ -168,13 +169,14 @@ method=auto
 "@
 }
 
-$guard = ''
-if ($Model) {
-  $guard = @"
+# Before partitioning: check the model and wipe the old install off the internal
+# drive (an old install still holding the drive fails with "Mount failed ...
+# /target"). prep-disk.sh powers the tablet off, erasing nothing, if the model
+# doesn't match or the internal drive is ambiguous. -Model '' skips the check.
+$guard = @"
   early-commands:
-    - sh -c 'grep -qs "$Model" /sys/class/dmi/id/product_name /sys/class/dmi/id/board_name || { echo "This is not an $Model tablet - refusing to erase it."; exit 1; }'
+    - KIOSK_MODEL='$Model' bash /cdrom/kiosk/prep-disk.sh auto
 "@
-}
 Write-Lf (Join-Path $usbRoot 'autoinstall.yaml') @"
 # Written by make-kiosk-usb.ps1 - unattended Ubuntu install for the kiosk tablet.
 autoinstall:
@@ -194,6 +196,8 @@ $guard
   storage:
     layout:
       name: direct
+      match:
+        size: largest
   codecs:
     install: false
   drivers:

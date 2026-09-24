@@ -108,16 +108,34 @@ echo "✅ device can only be powered off by holding the power button (firmware)"
 # --- 3. Remove the GNOME first-login welcome tour ------------------------------
 apt purge -y gnome-initial-setup 2>/dev/null || true
 
+# --- 3b. Remove Firefox (the kiosk uses Chrome only) ---------------------------
+# On Ubuntu 24.04 Firefox is a snap; the apt "firefox" package only reinstalls
+# the snap, so purge it, remove the snap, and pin apt so it can't come back.
+echo "🦊 Removing Firefox..."
+apt purge -y firefox 2>/dev/null || true
+snap remove --purge firefox 2>/dev/null || true
+cat > /etc/apt/preferences.d/no-firefox <<'EOF'
+Package: firefox*
+Pin: release *
+Pin-Priority: -1
+EOF
+if command -v firefox >/dev/null 2>&1 || snap list firefox >/dev/null 2>&1; then
+  echo "⚠️  Firefox is still installed — remove it with: sudo snap remove --purge firefox"
+else
+  echo "✅ Firefox removed (and blocked from reinstalling)"
+fi
+
 # --- 4. Fixed boot orientation (BOOT_ROTATION=left|right|inverted|normal) ------
 # Sets the panel orientation at the KERNEL level, so the boot splash, the
 # login screen, the GNOME session, AND the touch mapping all come up rotated
 # together. left = portrait with the top toward the tablet's left edge; if
 # yours lands upside down, use right instead.
 #
-# Only set it when the picture is wrong BEFORE any fix — look at the Ubuntu
-# installer screen. Many tablets already come up the right way round (the
-# S101AYCR110 does, despite its native 1200x1920 portrait panel), and
-# forcing a value there turns a correct screen sideways or upside down.
+# Only set it when the picture is wrong BEFORE any fix — judge by the boot
+# splash or the installed system's login screen, NOT the Ubuntu installer
+# (it follows the tilt sensor, so it can look right on an inverted panel).
+# The S101AYCR110 needs inverted; tablet-setup.sh sets that by default.
+# Forcing a value on a correct panel turns it sideways or upside down.
 # Sideways needs left/right (90 deg); inverted (180) can never fix sideways.
 #
 # Because the kernel rotation already carries touch and the splash with it,
