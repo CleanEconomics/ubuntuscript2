@@ -17,7 +17,7 @@ ENV_FILE=/etc/kiosk-firstboot.env
 # shellcheck disable=SC1090
 . "$ENV_FILE"
 : "${APPLIANCE_URL:?APPLIANCE_URL missing from $ENV_FILE}"
-KIOSK_USER="${KIOSK_USER:-operator}"
+KIOSK_USER="${KIOSK_USER:-kiosk}"
 RAW_BASE="https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main"
 
 # No Wi-Fi is set up by the install: someone picks it on the login screen

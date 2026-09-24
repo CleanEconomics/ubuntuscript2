@@ -33,10 +33,17 @@ fi
 TARGET_DISPLAY="${KIOSK_URL:-${APPLIANCE_URL:-http://$APPLIANCE_IP}}"
 export APPLIANCE_URL APPLIANCE_IP KIOSK_URL 2>/dev/null || true
 
-# The S101AYCR110's boot splash comes up upside down while the desktop is
-# correct, so the splash artwork is drawn turned 180 by default.
-# SPLASH_ROTATE=0 for a tablet whose splash is already the right way up.
-export SPLASH_ROTATE="${SPLASH_ROTATE:-180}"
+# The S101AYCR110's panel is mounted upside down: with no rotation set, the
+# splash, login screen and installed desktop all come up inverted (the Ubuntu
+# installer only looks right because it follows the tilt sensor). So by
+# default the whole panel is turned 180 at the kernel level, which carries
+# the splash, login, kiosk, touch and mouse together, and the splash artwork
+# itself is left unrotated (rotating both would flip it back).
+#   BOOT_ROTATION=none  for a tablet whose screen is already the right way up
+#   SPLASH_ROTATE=180   only to flip the splash artwork on its own
+export BOOT_ROTATION="${BOOT_ROTATION:-inverted}"
+[[ "$BOOT_ROTATION" == "none" ]] && unset BOOT_ROTATION
+export SPLASH_ROTATE="${SPLASH_ROTATE:-0}"
 
 TABLET_SCRIPTS=(
   01_system_update.sh
