@@ -56,14 +56,30 @@ if (bg.image) {
     bg.sprite.SetZ(-100);
 }
 
-# --- Logo: centered ----------------------------------------------------------
+# --- Logos: Boeing, and the Autopilot org logo beside it ----------------------
+# Both centered as a pair; if autopilot.png is missing, Boeing sits alone.
 logo.image = Image("logo.png");
+ap.image = Image("autopilot.png");
+gap = 80;
+pair_w = 0;
+if (logo.image) pair_w = pair_w + logo.image.GetWidth();
+if (ap.image) pair_w = pair_w + ap.image.GetWidth();
+if (logo.image && ap.image) pair_w = pair_w + gap;
+pair_x = screen.w / 2 - pair_w / 2;
 if (logo.image) {
     logo.sprite = Sprite(orient(logo.image));
-    logo.x = screen.w / 2 - logo.image.GetWidth() / 2;
+    logo.x = pair_x;
     logo.y = screen.h / 2 - logo.image.GetHeight() / 2;
     place(logo.sprite, logo.x, logo.y, logo.image.GetWidth(), logo.image.GetHeight());
     logo.sprite.SetZ(10);
+    pair_x = pair_x + logo.image.GetWidth() + gap;
+}
+if (ap.image) {
+    ap.sprite = Sprite(orient(ap.image));
+    ap.x = pair_x;
+    ap.y = screen.h / 2 - ap.image.GetHeight() / 2;
+    place(ap.sprite, ap.x, ap.y, ap.image.GetWidth(), ap.image.GetHeight());
+    ap.sprite.SetZ(10);
 }
 
 # --- Spinner: pre-rotated frames, below the logo -----------------------------
