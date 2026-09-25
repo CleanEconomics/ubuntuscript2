@@ -220,6 +220,26 @@ if [[ "${USB_AUTOSUSPEND:-0}" != "1" ]] && ! grep -q 'usbcore.autosuspend' /etc/
   fi
 fi
 
+# --- 4c. Never stop at the GRUB menu -------------------------------------------
+# Kiosk tablets get switched off by holding the power button. Ubuntu then marks
+# the boot as failed ("recordfail") and the next start waits at the GRUB menu
+# forever, which needs a keyboard. Boot straight through instead; holding
+# Shift or tapping Esc at power-on still opens the menu for maintenance.
+echo "⏩ Making GRUB boot straight through (also after a hard power-off)..."
+set_grub() {
+  local key="$1" val="$2"
+  if grep -qE "^#?${key}=" /etc/default/grub; then
+    sed -i -E "s|^#?${key}=.*|${key}=${val}|" /etc/default/grub
+  else
+    echo "${key}=${val}" >> /etc/default/grub
+  fi
+}
+set_grub GRUB_TIMEOUT_STYLE hidden
+set_grub GRUB_TIMEOUT 0
+set_grub GRUB_RECORDFAIL_TIMEOUT 0
+update-grub >/dev/null 2>&1 && echo "✅ GRUB menu skipped, even after a hard power-off" \
+  || echo "⚠️  update-grub failed — GRUB menu may still appear after a hard power-off."
+
 # --- 5. Optional touchscreen calibration ---------------------------------------
 # Some tablet models have the touch sensor mirrored vs the panel. Pass
 # TOUCH_FLIP=x|y|xy or TOUCH_ROTATE=90|270 to bake in the fix (see
