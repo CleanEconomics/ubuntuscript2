@@ -44,6 +44,12 @@ export APPLIANCE_URL APPLIANCE_IP KIOSK_URL 2>/dev/null || true
 export BOOT_ROTATION="${BOOT_ROTATION:-left}"
 [[ "$BOOT_ROTATION" == "none" ]] && unset BOOT_ROTATION
 export SPLASH_ROTATE="${SPLASH_ROTATE:-180}"
+# With left set, the S101's touch sensor still lands 180 off (tap bottom-left,
+# top-right responds), so touch gets its own flip. tablet_tweaks.sh applies it
+# after the rotation, which clears older touch fixes first.
+#   TOUCH_FLIP=none  if touch already lands where you tap
+export TOUCH_FLIP="${TOUCH_FLIP:-xy}"
+[[ "$TOUCH_FLIP" == "none" ]] && unset TOUCH_FLIP
 
 TABLET_SCRIPTS=(
   01_system_update.sh
