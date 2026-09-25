@@ -174,7 +174,19 @@ for PDIR in /etc/opt/chrome/policies/managed \
   "MetricsReportingEnabled": false,
   "ShowHomeButton": false,
   "BookmarkBarEnabled": false,
-  "SavingBrowserHistoryDisabled": true
+  "SavingBrowserHistoryDisabled": true,
+  "PromotionalTabsEnabled": false,
+  "PromotionsEnabled": false,
+  "PrivacySandboxPromptEnabled": false,
+  "PrivacySandboxAdTopicsEnabled": false,
+  "PrivacySandboxSiteEnabledAdsEnabled": false,
+  "PrivacySandboxAdMeasurementEnabled": false,
+  "DefaultPopupsSetting": 2,
+  "SearchSuggestEnabled": false,
+  "ShoppingListEnabled": false,
+  "HighEfficiencyModeEnabled": false,
+  "UserFeedbackAllowed": false,
+  "AutofillPredictionSettings": 2
 }
 EOF
 done

@@ -172,15 +172,16 @@ were pre-flipped for one upside-down unit and have been corrected):
    — this sets the kernel `panel_orientation`, so the Plymouth splash, GDM,
    the GNOME session **and the touch mapping** all rotate together.
 
-   Pick the value from what the **Ubuntu installer screen** looks like —
-   that is the picture before any fix. Don't guess from the hardware: the
-   S101AYCR110 has a native 1200×1920 portrait panel, yet its installer
-   comes up the right way round, and forcing `left` there turned a correct
-   screen sideways.
+   **S101AYCR110: `tablet-setup.sh` sets `BOOT_ROTATION=left` by default**
+   (confirmed on the tablet Sep 24: no setting and `right` = upside down,
+   `inverted` = sideways, `left` = correct). Don't judge by the Ubuntu
+   installer screen: it follows the tilt sensor, so it can look right on a
+   panel that isn't. Judge by the installed system's login screen. For other
+   tablets:
 
-   | installer screen is… | use |
+   | installed login screen is… | use |
    | --- | --- |
-   | correct | **nothing** — leave `BOOT_ROTATION` out (the S101AYCR110 case) |
+   | correct | `BOOT_ROTATION=none` |
    | sideways (90° off) | `BOOT_ROTATION=left` — if it then lands upside down, re-run with `right` |
    | upside down (180°) | `BOOT_ROTATION=inverted` |
 
@@ -205,9 +206,9 @@ were pre-flipped for one upside-down unit and have been corrected):
    not the panel — don't use `BOOT_ROTATION`, it would turn the desktop too.
    The splash has its own switch, `SPLASH_ROTATE=180`, which draws the splash
    artwork turned 180° (the image files stay right-way-up). The S101AYCR110
-   needs it, so `tablet-setup.sh` passes it **by default**; add
-   `SPLASH_ROTATE=0` for a tablet whose splash is already correct, and also
-   whenever you use `BOOT_ROTATION` (the splash follows that rotation).
+   needs it (together with `BOOT_ROTATION=left`), so `tablet-setup.sh`
+   passes it **by default**; add `SPLASH_ROTATE=0` for a tablet whose splash
+   is already correct.
    To change it on a unit that's already set up:
 
    ```bash
