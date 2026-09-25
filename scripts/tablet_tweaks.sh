@@ -82,6 +82,18 @@ idle-delay=uint32 0
 lock-enabled=false
 idle-activation-enabled=false
 EOF
+# Lock the never-blank / never-sleep settings so no per-user setting or app
+# can turn screen blanking back on.
+mkdir -p /etc/dconf/db/local.d/locks
+cat > /etc/dconf/db/local.d/locks/01-tablet-kiosk <<'EOF'
+/org/gnome/desktop/session/idle-delay
+/org/gnome/desktop/screensaver/lock-enabled
+/org/gnome/desktop/screensaver/idle-activation-enabled
+/org/gnome/settings-daemon/plugins/power/idle-dim
+/org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-type
+/org/gnome/settings-daemon/plugins/power/sleep-inactive-battery-type
+/org/gnome/settings-daemon/plugins/power/power-button-action
+EOF
 dconf update
 if [[ "$ORIENTATION_LOCK" == "true" ]]; then
   echo "✅ rotation LOCKED (default; LOCK_ROTATION=0 for auto-rotate), OSK on, banners off, power/idle hardened"
@@ -217,6 +229,32 @@ if [[ "${USB_AUTOSUSPEND:-0}" != "1" ]] && ! grep -q 'usbcore.autosuspend' /etc/
     echo "✅ USB autosuspend off (keyboards/mice stay powered; applies after reboot)"
   else
     echo "⚠️  Could not edit /etc/default/grub — USB autosuspend unchanged."
+  fi
+fi
+
+# --- 4b2. Screen must come back after sitting idle ------------------------------
+# Intel graphics (the S101's i7-10510Y) use Panel Self Refresh: when the
+# picture doesn't change for a while (a dashboard left alone), the GPU stops
+# sending frames and the panel keeps the last one. On some tablet panels it
+# never wakes up again: the screen goes black after sitting unused and stays
+# black. i915.enable_psr=0 turns that off; consoleblank=0 keeps the text
+# console from blanking too. PSR_OK=1 leaves the kernel default.
+if [[ "${PSR_OK:-0}" != "1" ]]; then
+  KPARAMS="consoleblank=0"
+  if lspci 2>/dev/null | grep -qiE 'VGA.*Intel|Display.*Intel'; then
+    KPARAMS="i915.enable_psr=0 $KPARAMS"
+  fi
+  changed=0
+  for p in $KPARAMS; do
+    if ! grep -q "${p%%=*}=" /etc/default/grub; then
+      sed -i -E "s/^(GRUB_CMDLINE_LINUX_DEFAULT=\")/\1$p /" /etc/default/grub && changed=1
+    fi
+  done
+  if [[ $changed -eq 1 ]]; then
+    update-grub >/dev/null 2>&1 && echo "✅ Screen stays on when idle ($KPARAMS; applies after reboot)" \
+      || echo "⚠️  update-grub failed — idle-screen fix not applied."
+  else
+    echo "ℹ️  Idle-screen kernel settings already present."
   fi
 fi
 
