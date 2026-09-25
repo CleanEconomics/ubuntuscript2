@@ -82,6 +82,10 @@ Tablet tweaks (`scripts/tablet_tweaks.sh`, tablet profile only):
 - Suspend made impossible: power button ignored, sleep targets masked,
   no screen dim on battery. Hold the power button for a hard power-off.
 - No notification banners over the kiosk; GNOME welcome tour removed.
+- Screen stays on: Intel Panel Self Refresh is off (`i915.enable_psr=0`,
+  plus `consoleblank=0`) and the GNOME never-blank / never-sleep keys are
+  locked, so a dashboard left alone for hours does not go black and stay
+  black. `PSR_OK=1` keeps the kernel default.
 
 Requirements: x86_64 tablet (check before wiping Windows — no ARM),
 Ubuntu Desktop 24.04 LTS, 4 GB RAM minimum.
@@ -90,7 +94,7 @@ Ubuntu Desktop 24.04 LTS, 4 GB RAM minimum.
 
 `usb/make-kiosk-usb.ps1` makes a USB stick that does the whole job: boot the
 tablet from it and it erases the internal drive, installs Ubuntu 24.04 with
-the `operator` account, and powers off. Pull the stick, power on, and pick the
+the `kiosk` account (Ubuntu reserves the name `operator`), and powers off. Pull the stick, power on, and pick the
 Wi-Fi on the login screen (network icon, top right; the on-screen keyboard
 pops up for the password) or plug in Ethernet. The first boot then runs
 `tablet.sh` (latest code from GitHub) by itself and reboots into the kiosk.
@@ -102,7 +106,7 @@ On a Windows PC, in **PowerShell as Administrator**, from a copy of this repo:
 powershell -ExecutionPolicy Bypass -File usb\make-kiosk-usb.ps1 -ApplianceUrl 'https://DASHBOARD_HOST/'
 ```
 
-It asks for the `operator` password, lists the USB drives, and erases only
+It asks for the `kiosk` password, lists the USB drives, and erases only
 the one you pick after you type `ERASE`.
 Needs a stick of 8 GB or more and Git for Windows (for `openssl`); the Ubuntu
 ISO is downloaded and checked if it isn't in Downloads.
@@ -116,7 +120,7 @@ ISO is downloaded and checked if it isn't in Downloads.
 - First-boot setup waits until the tablet is online, then takes ~30–40 min
   with the login screen showing; don't log in. Log:
   `/var/log/kiosk-firstboot.log` (it also prints the RustDesk ID).
-- The `operator` password is on the stick only as a hash. `-WifiSsid` /
+- The `kiosk` password is on the stick only as a hash. `-WifiSsid` /
   `-WifiPassword` put a Wi-Fi network on the stick (plain text) instead of
   picking it on the tablet.
 - Other options: `-TimeZone` (default `America/New_York`), `-Hostname`,
@@ -150,7 +154,7 @@ Do these while Windows is still on the device — they can't be done afterwards.
    stick needs a USB-C hub (pick a hub with power pass-through if the
    tablet has a single USB-C port).
 5. Boot the tablet from the stick, choose *Erase disk and install Ubuntu*,
-   create the kiosk user (e.g. `operator`), then **click Install on the
+   create the kiosk user (`kiosk` — the installer rejects `operator`, it is a reserved name), then **click Install on the
    "Review your choices" screen and wait for "Installation complete"** —
    nothing is written to the disk before that, so stopping earlier boots
    back into the installer every time. Restart, **pull the stick out as soon
@@ -187,9 +191,13 @@ were pre-flipped for one upside-down unit and have been corrected):
 
    ```bash
    curl -fsSL https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/scripts/tablet_tweaks.sh \
-     | sudo BOOT_ROTATION=left bash      # only if sideways (or: right | inverted)
+     | sudo BOOT_ROTATION=left TOUCH_FLIP=xy bash   # S101: always pass both
    sudo reboot
    ```
+
+   Always pass `TOUCH_FLIP` together with `BOOT_ROTATION` when running the
+   tweaks by hand: applying a rotation clears the touch calibration first, so
+   `BOOT_ROTATION=left` alone leaves the S101 with touch 180° off.
 
    Rotation stays locked either way (the tablet tweaks lock it by default);
    add `LOCK_ROTATION=0` if the unit is handheld and should auto-rotate.
@@ -205,7 +213,7 @@ were pre-flipped for one upside-down unit and have been corrected):
    **Only the boot splash is upside down; login and kiosk are fine?** That's
    not the panel — don't use `BOOT_ROTATION`, it would turn the desktop too.
    The splash has its own switch, `SPLASH_ROTATE=180`, which draws the splash
-   artwork turned 180° (the image files stay right-way-up). The S101AYCR110
+   artwork turned 180° (the image files stay right-way-up). `SPLASH_ROTATE=180`
    is **not** needed on the S101AYCR110: with `BOOT_ROTATION=left` the splash
    turns with the screen (confirmed Sep 24), so `tablet-setup.sh` defaults to
    `SPLASH_ROTATE=0`. Use `SPLASH_ROTATE=180` only on a tablet where the
@@ -231,7 +239,9 @@ were pre-flipped for one upside-down unit and have been corrected):
 
    Or bake it into provisioning: `TOUCH_FLIP=x` / `TOUCH_ROTATE=90` on the
    `tablet_tweaks.sh` command line (it's applied after the step-1 cleanup,
-   so it sticks). Undo with `FLIP=none`.
+   so it sticks). Undo with `FLIP=none`. **S101AYCR110: `tablet-setup.sh`
+   defaults to `TOUCH_FLIP=xy`** (with `left`, touch still landed 180° off);
+   `TOUCH_FLIP=none` turns it off.
 
 3. **Auto-rotation flips the screen the wrong way a few seconds after boot**
    (upside down in every position)? The accelerometer is mounted rotated:
@@ -328,7 +338,7 @@ Run the kiosk step directly (URL is required — set it in the terminal):
 
 ```bash
 sudo APPLIANCE_URL='http://host:port/path' bash scripts/08_kiosk.sh
-sudo APPLIANCE_URL='...' KIOSK_USER=operator bash scripts/08_kiosk.sh
+sudo APPLIANCE_URL='...' KIOSK_USER=kiosk bash scripts/08_kiosk.sh
 ```
 
 Reboot to enter kiosk mode:

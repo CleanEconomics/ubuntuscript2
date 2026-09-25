@@ -15,7 +15,9 @@ echo "=== kiosk first boot: $(date)"
 
 ENV_FILE=/etc/kiosk-firstboot.env
 # shellcheck disable=SC1090
-. "$ENV_FILE"
+# set -a exports everything in the env file, so any extra setting written to
+# the stick (e.g. BOOT_ROTATION, TOUCH_FLIP, SPLASH_ROTATE) reaches the setup.
+set -a; . "$ENV_FILE"; set +a
 : "${APPLIANCE_URL:?APPLIANCE_URL missing from $ENV_FILE}"
 KIOSK_USER="${KIOSK_USER:-kiosk}"
 RAW_BASE="https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main"
