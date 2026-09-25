@@ -23,8 +23,17 @@ RAW_BASE="https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main"
 # No Wi-Fi is set up by the install: someone picks it on the login screen
 # (network icon, top right). Ethernet just works. Wait as long as it takes.
 echo "Waiting for internet — pick the Wi-Fi from the login screen's network menu, or plug in Ethernet..."
+# A minimal Ubuntu install has no curl (wget is there), so check with
+# whichever exists, then install curl: the setup scripts need it.
+online() {
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsI --max-time 5 "$RAW_BASE/tablet.sh" >/dev/null 2>&1
+  else
+    wget -q --spider --timeout=5 "$RAW_BASE/tablet.sh" >/dev/null 2>&1
+  fi
+}
 n=0
-until curl -fsI --max-time 5 "$RAW_BASE/tablet.sh" >/dev/null 2>&1; do
+until online; do
   n=$((n + 1))
   (( n % 12 == 0 )) && echo "  still offline after $((n / 12)) min"
   sleep 5
@@ -40,6 +49,12 @@ for _ in $(seq 1 120); do
   fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock >/dev/null 2>&1 || break
   sleep 5
 done
+
+if ! command -v curl >/dev/null 2>&1; then
+  echo "Installing curl..."
+  apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q curl \
+    || { echo "Could not install curl - will try again on the next boot."; exit 1; }
+fi
 
 if ! curl -fsSL "$RAW_BASE/tablet.sh" -o /root/tablet.sh; then
   echo "Could not download tablet.sh — will try again on the next boot."
