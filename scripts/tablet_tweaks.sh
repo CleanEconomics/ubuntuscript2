@@ -241,7 +241,9 @@ fi
 # console from blanking too. PSR_OK=1 leaves the kernel default.
 if [[ "${PSR_OK:-0}" != "1" ]]; then
   KPARAMS="consoleblank=0"
-  if lspci 2>/dev/null | grep -qiE 'VGA.*Intel|Display.*Intel'; then
+  # Detect Intel graphics by the loaded driver first (pciutils/lspci is not
+  # guaranteed on a minimal desktop install), then fall back to lspci.
+  if [[ -d /sys/module/i915 ]] || lspci 2>/dev/null | grep -qiE 'VGA.*Intel|Display.*Intel'; then
     KPARAMS="i915.enable_psr=0 $KPARAMS"
   fi
   changed=0
