@@ -206,9 +206,10 @@ were pre-flipped for one upside-down unit and have been corrected):
    not the panel — don't use `BOOT_ROTATION`, it would turn the desktop too.
    The splash has its own switch, `SPLASH_ROTATE=180`, which draws the splash
    artwork turned 180° (the image files stay right-way-up). The S101AYCR110
-   needs it (together with `BOOT_ROTATION=left`), so `tablet-setup.sh`
-   passes it **by default**; add `SPLASH_ROTATE=0` for a tablet whose splash
-   is already correct.
+   is **not** needed on the S101AYCR110: with `BOOT_ROTATION=left` the splash
+   turns with the screen (confirmed Sep 24), so `tablet-setup.sh` defaults to
+   `SPLASH_ROTATE=0`. Use `SPLASH_ROTATE=180` only on a tablet where the
+   splash alone comes up upside down.
    To change it on a unit that's already set up:
 
    ```bash

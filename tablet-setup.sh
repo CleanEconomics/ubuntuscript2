@@ -37,13 +37,13 @@ export APPLIANCE_URL APPLIANCE_IP KIOSK_URL 2>/dev/null || true
 # Tested on the tablet (Sep 24): no setting = upside down, inverted = sideways,
 # right = upside down, so left is the one that puts the login, kiosk, touch and
 # mouse the right way up. It's set at the kernel level so they all turn together.
-# Plymouth draws the splash 180 off on this panel even with left set, so the
-# splash artwork is flipped on its own with SPLASH_ROTATE=180.
+# The boot splash follows the same rotation, so its artwork is NOT flipped on
+# its own (confirmed on the tablet: SPLASH_ROTATE=180 with left = upside down).
 #   BOOT_ROTATION=none  for a tablet whose screen is already the right way up
-#   SPLASH_ROTATE=0     if the splash comes up the right way without the flip
+#   SPLASH_ROTATE=180   only if the splash alone comes up upside down
 export BOOT_ROTATION="${BOOT_ROTATION:-left}"
 [[ "$BOOT_ROTATION" == "none" ]] && unset BOOT_ROTATION
-export SPLASH_ROTATE="${SPLASH_ROTATE:-180}"
+export SPLASH_ROTATE="${SPLASH_ROTATE:-0}"
 # With left set, the S101's touch sensor still lands 180 off (tap bottom-left,
 # top-right responds), so touch gets its own flip. tablet_tweaks.sh applies it
 # after the rotation, which clears older touch fixes first.
