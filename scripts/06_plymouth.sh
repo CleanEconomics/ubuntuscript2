@@ -13,7 +13,7 @@ THEME_REPO_URL="https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/m
 STAGE="$(mktemp -d)"
 
 ok=1
-for f in "$THEME_NAME.plymouth" "$THEME_NAME.script" logo.png background.png spinner.png; do
+for f in "$THEME_NAME.plymouth" "$THEME_NAME.script" logo.png autopilot.png background.png spinner.png; do
   if ! curl -fsSL "$THEME_REPO_URL/$f" -o "$STAGE/$f"; then
     echo "⚠️  Failed to download $f"
     ok=0

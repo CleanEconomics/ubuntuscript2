@@ -134,7 +134,7 @@ fi
 # Only set it when the picture is wrong BEFORE any fix — judge by the boot
 # splash or the installed system's login screen, NOT the Ubuntu installer
 # (it follows the tilt sensor, so it can look right on an inverted panel).
-# The S101AYCR110 needs inverted; tablet-setup.sh sets that by default.
+# The S101AYCR110 needs right; tablet-setup.sh sets that by default.
 # Forcing a value on a correct panel turns it sideways or upside down.
 # Sideways needs left/right (90 deg); inverted (180) can never fix sideways.
 #
