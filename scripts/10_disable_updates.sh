@@ -11,6 +11,8 @@ set -euo pipefail
 #   - snap: refreshes held indefinitely (covers the Chromium fallback)
 #   - GNOME Software: background download/install of updates
 #   - update-notifier popups and the "new Ubuntu release" upgrade prompt
+#   - crash-report dialogs (apport/whoopsie), Ubuntu Pro/apt news, and
+#     background apps that pop windows or notifications over the kiosk
 #
 # Google Chrome updates via apt on Linux, so with apt automation off it only
 # updates when you run `apt upgrade` yourself. To also pin it against manual
@@ -103,11 +105,49 @@ else
 fi
 echo "✅ release-upgrade prompts off"
 
+# --- 5. No other pop-ups over the kiosk --------------------------------------
+# Crash reports ("System program problem detected"), update/Software/Ubuntu Pro
+# notifiers and other background apps that open windows or notifications.
+echo "🙈 Silencing crash reports and background pop-ups..."
+if [[ -f /etc/default/apport ]]; then
+  sed -i 's/^enabled=.*/enabled=0/' /etc/default/apport
+fi
+for unit in apport.service apport-autoreport.path apport-autoreport.service \
+            apport-forward.socket whoopsie.service whoopsie.path \
+            ua-timer.timer ubuntu-advantage.service motd-news.timer; do
+  systemctl stop "$unit"    2>/dev/null || true
+  systemctl disable "$unit" 2>/dev/null || true
+  systemctl mask "$unit"    2>/dev/null || true
+done
+rm -f /var/crash/* 2>/dev/null || true
+command -v pro >/dev/null 2>&1 && pro config set apt_news=false >/dev/null 2>&1 || true
+
+# Session autostarts that pop windows/notifications: hide them for every user
+# with a per-user override (~/.config/autostart/<name>.desktop, Hidden=true),
+# which wins over /etc/xdg/autostart and survives package upgrades. /etc/skel
+# covers accounts created later.
+for app in update-notifier gnome-software-service org.gnome.Software \
+           snap-userd-autostart snapd-desktop-integration_snapd-desktop-integration \
+           ubuntu-advantage-notification org.gnome.Evolution-alarm-notify \
+           org.gnome.DejaDup.Monitor gnome-initial-setup-first-login \
+           ubuntu-report-on-upgrade apport-gtk; do
+  for home in /etc/skel /home/*; do
+    [[ -d "$home" ]] || continue
+    mkdir -p "$home/.config/autostart"
+    printf '[Desktop Entry]\nType=Application\nName=%s\nHidden=true\nX-GNOME-Autostart-enabled=false\n' "$app" \
+      > "$home/.config/autostart/$app.desktop"
+    [[ "$home" == /etc/skel ]] || chown -R --reference="$home" "$home/.config/autostart" 2>/dev/null || true
+  done
+done
+pkill -f update-notifier 2>/dev/null || true
+echo "✅ crash reports, update/Software/Pro notifiers and background pop-ups off"
+
 echo ""
 echo "==============================="
 echo "✅ Automatic updates disabled"
 echo "   apt:   unattended-upgrades + daily timers masked"
 echo "   snap:  refreshes held"
 echo "   GNOME: update downloads + notifications off"
+echo "   Pop-ups: crash reports, update/Software/Pro notifiers hidden"
 echo "   To update deliberately: sudo apt update && sudo apt upgrade"
 echo "==============================="

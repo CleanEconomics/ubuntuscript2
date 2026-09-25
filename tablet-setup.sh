@@ -33,18 +33,17 @@ fi
 TARGET_DISPLAY="${KIOSK_URL:-${APPLIANCE_URL:-http://$APPLIANCE_IP}}"
 export APPLIANCE_URL APPLIANCE_IP KIOSK_URL 2>/dev/null || true
 
-# The S101AYCR110's panel is a 1200x1920 portrait panel mounted landscape, and
-# the kernel's built-in orientation for it is the wrong way (splash, login and
-# desktop come up upside down; the Ubuntu installer only looks right because it
-# follows the tilt sensor). left and inverted were both tried on the tablet:
-# left = upside down, inverted = sideways, so right is correct. It's set at the
-# kernel level, which carries the splash, login, kiosk, touch and mouse
-# together, and the splash artwork itself is left unrotated.
+# The S101AYCR110's panel is a 1200x1920 portrait panel mounted landscape.
+# Tested on the tablet (Sep 24): no setting = upside down, inverted = sideways,
+# right = upside down, so left is the one that puts the login, kiosk, touch and
+# mouse the right way up. It's set at the kernel level so they all turn together.
+# Plymouth draws the splash 180 off on this panel even with left set, so the
+# splash artwork is flipped on its own with SPLASH_ROTATE=180.
 #   BOOT_ROTATION=none  for a tablet whose screen is already the right way up
-#   SPLASH_ROTATE=180   only to flip the splash artwork on its own
-export BOOT_ROTATION="${BOOT_ROTATION:-right}"
+#   SPLASH_ROTATE=0     if the splash comes up the right way without the flip
+export BOOT_ROTATION="${BOOT_ROTATION:-left}"
 [[ "$BOOT_ROTATION" == "none" ]] && unset BOOT_ROTATION
-export SPLASH_ROTATE="${SPLASH_ROTATE:-0}"
+export SPLASH_ROTATE="${SPLASH_ROTATE:-180}"
 
 TABLET_SCRIPTS=(
   01_system_update.sh
