@@ -10,7 +10,7 @@ set -euo pipefail
 #     tablet whose accelerometer is mounted differently than Linux assumes
 #     flips the screen on its own a few seconds after boot. For a handheld
 #     unit that should follow how it is held:  LOCK_ROTATION=0 ./tablet_tweaks.sh
-#     (iio-sensor-proxy is installed either way).
+#     (iio-sensor-proxy is installed either way, but masked while locked).
 #   - Keeps the on-screen keyboard AVAILABLE (no physical keyboard — portal
 #     text fields must pop the OSK)
 #   - No notification banners over the kiosk
@@ -93,8 +93,23 @@ cat > /etc/dconf/db/local.d/locks/01-tablet-kiosk <<'EOF'
 /org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-type
 /org/gnome/settings-daemon/plugins/power/sleep-inactive-battery-type
 /org/gnome/settings-daemon/plugins/power/power-button-action
+/org/gnome/settings-daemon/peripherals/touchscreen/orientation-lock
 EOF
 dconf update
+
+# With rotation locked, the tilt sensor must have no say at all. The dconf lock
+# only covers the user session; the login screen (GDM) and any stray setting
+# could still follow the accelerometer and turn the screen after boot, which
+# makes identical tablets end up at different angles. Stopping the sensor
+# service removes it completely; the kernel rotation (BOOT_ROTATION) does the
+# real work. LOCK_ROTATION=0 keeps the sensor for handheld use.
+if [[ "$ORIENTATION_LOCK" == "true" ]]; then
+  systemctl stop iio-sensor-proxy.service 2>/dev/null || true
+  systemctl mask iio-sensor-proxy.service 2>/dev/null || true
+  echo "✅ tilt sensor (iio-sensor-proxy) off: the screen can't turn on its own"
+else
+  systemctl unmask iio-sensor-proxy.service 2>/dev/null || true
+fi
 if [[ "$ORIENTATION_LOCK" == "true" ]]; then
   echo "✅ rotation LOCKED (default; LOCK_ROTATION=0 for auto-rotate), OSK on, banners off, power/idle hardened"
 else
