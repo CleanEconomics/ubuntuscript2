@@ -457,6 +457,16 @@ if command -v unclutter >/dev/null 2>&1; then
   unclutter -idle 0.5 -root &
 fi
 
+# --- Clear a stale profile lock left by a hard power-off ---
+# Chrome writes SingletonLock/Socket/Cookie into the profile while it runs.
+# When the tablet is switched off by holding the power button they are left
+# behind; after the next boot Chrome can decide "the profile is in use by
+# another process" and exit at once (no window, so the kiosk looks stuck).
+# Only this launcher ever runs this profile, so the lock is always stale here.
+if ! pgrep -f -- "--user-data-dir=\$PROFILE" >/dev/null 2>&1; then
+  rm -f "\$PROFILE/SingletonLock" "\$PROFILE/SingletonSocket" "\$PROFILE/SingletonCookie" 2>/dev/null || true
+fi
+
 # --- Suppress "Google Chrome didn't shut down correctly" restore prompt ---
 PREF="\$PROFILE/Default/Preferences"
 if [ -f "\$PREF" ]; then
@@ -521,7 +531,9 @@ while true; do
     --autoplay-policy=no-user-gesture-required \\
     --test-type \\
     \$OZONE
-  # Chrome exited. If the portal is up now, go straight to it on relaunch.
+  # Chrome exited. Clear any lock it left, and if the portal is up now, go
+  # straight to it on relaunch.
+  rm -f "\$PROFILE/SingletonLock" "\$PROFILE/SingletonSocket" "\$PROFILE/SingletonCookie" 2>/dev/null || true
   if curl -fsSk --max-time 2 "\$URL" >/dev/null 2>&1; then TARGET="\$URL"; fi
   sleep 2
 done
