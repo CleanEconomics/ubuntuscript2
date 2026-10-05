@@ -431,6 +431,22 @@ URL="\${KIOSK_URL:-$KIOSK_URL}"
 FALLBACK="\${KIOSK_FALLBACK_URL:-$KIOSK_FALLBACK_URL}"
 BROWSER="$BROWSER_BIN"
 PROFILE="\$HOME/.config/kiosk-chrome"
+LOG="\$HOME/.cache/kiosk-launcher.log"
+mkdir -p "\$HOME/.cache"
+
+# --- Only one launcher at a time ---
+# Two copies (autostart plus a manual kiosk-mode.sh, or a session that starts
+# autostart twice) would each run Chrome on the same profile. The second
+# Chrome hands off to the first and exits at once, its loop starts it again
+# two seconds later, and the screen flashes every few seconds forever.
+exec 9>"\$HOME/.cache/kiosk-launcher.lock"
+if ! flock -n 9; then
+  echo "\$(date '+%F %T') another launcher is already running; exiting" >> "\$LOG"
+  exit 0
+fi
+# Keep the log small.
+[ -f "\$LOG" ] && [ "\$(wc -l < "\$LOG")" -gt 2000 ] && tail -n 500 "\$LOG" > "\$LOG.tmp" && mv "\$LOG.tmp" "\$LOG"
+echo "\$(date '+%F %T') launcher started" >> "\$LOG"
 
 # CSV exports / downloads from the portal land here (managed policy points
 # Chrome at this folder with no save dialog).
@@ -454,7 +470,7 @@ fi
 
 # --- Hide the mouse pointer when idle (X11/XWayland) ---
 if command -v unclutter >/dev/null 2>&1; then
-  unclutter -idle 0.5 -root &
+  unclutter -idle 0.5 -root 9>&- &
 fi
 
 # --- Clear a stale profile lock left by a hard power-off ---
@@ -495,7 +511,7 @@ fi
 # fields to Onboard so it pops up by itself. Chrome's Wayland IME path is not
 # used: on the S101 it swallowed both touch and USB keyboard input.
 if command -v onboard >/dev/null 2>&1 && ! pgrep -x onboard >/dev/null 2>&1; then
-  (GDK_BACKEND=x11 onboard >/dev/null 2>&1 &)
+  (GDK_BACKEND=x11 onboard >/dev/null 2>&1 9>&- &)
 fi
 OZONE="--ozone-platform=x11 --force-renderer-accessibility"
 
@@ -514,7 +530,10 @@ OZONE="--ozone-platform=x11 --force-renderer-accessibility"
 #
 # Relaunch loop: if Chrome crashes, is killed, or somehow gets closed, the
 # kiosk comes straight back instead of leaving a bare desktop until reboot.
+DELAY=2
 while true; do
+  STARTED=\$(date +%s)
+  echo "\$(date '+%F %T') starting Chrome -> \$TARGET" >> "\$LOG"
   "\$BROWSER" \\
     --user-data-dir="\$PROFILE" \\
     --kiosk "\$TARGET" \\
@@ -530,12 +549,24 @@ while true; do
     --ignore-certificate-errors \\
     --autoplay-policy=no-user-gesture-required \\
     --test-type \\
-    \$OZONE
-  # Chrome exited. Clear any lock it left, and if the portal is up now, go
-  # straight to it on relaunch.
-  rm -f "\$PROFILE/SingletonLock" "\$PROFILE/SingletonSocket" "\$PROFILE/SingletonCookie" 2>/dev/null || true
+    \$OZONE > "\$HOME/.cache/kiosk-chrome-last.log" 2>&1 9>&-
+  CODE=\$?
+  RAN=\$(( \$(date +%s) - STARTED ))
+  echo "\$(date '+%F %T') Chrome exited (code \$CODE) after \${RAN}s" >> "\$LOG"
+  # Chrome exited. Clear any lock it left (only if no kiosk Chrome is still
+  # running), and if the portal is up now, go straight to it on relaunch.
+  if ! pgrep -f -- "--user-data-dir=\$PROFILE" >/dev/null 2>&1; then
+    rm -f "\$PROFILE/SingletonLock" "\$PROFILE/SingletonSocket" "\$PROFILE/SingletonCookie" 2>/dev/null || true
+  fi
   if curl -fsSk --max-time 2 "\$URL" >/dev/null 2>&1; then TARGET="\$URL"; fi
-  sleep 2
+  # A Chrome that dies within seconds would otherwise flash on and off every
+  # couple of seconds. Back off (2, 4, 8 ... 30 s) until it stays up again.
+  if [ "\$RAN" -lt 20 ]; then
+    DELAY=\$(( DELAY * 2 )); [ "\$DELAY" -gt 30 ] && DELAY=30
+  else
+    DELAY=2
+  fi
+  sleep "\$DELAY"
 done
 EOF
 chmod +x "$START_SCRIPT"
