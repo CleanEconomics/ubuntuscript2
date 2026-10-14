@@ -147,6 +147,23 @@ AllowHibernation=no
 AllowSuspendThenHibernate=no
 AllowHybridSleep=no
 EOF
+# Restart/shutdown must never hang. By default systemd waits up to 90 s for
+# each service that doesn't stop (Chrome's relaunch loop, RustDesk, NetworkManager
+# waiting on Wi-Fi ...), and with the splash on screen that looks like a frozen
+# tablet. Cap the wait at 10 s, then force-stop. The hardware watchdog (if the
+# tablet has one) forces the reboot through if the kernel itself gets stuck.
+mkdir -p /etc/systemd/system.conf.d /etc/systemd/user.conf.d
+cat > /etc/systemd/system.conf.d/60-kiosk-fast-shutdown.conf <<'EOF'
+[Manager]
+DefaultTimeoutStopSec=10s
+RebootWatchdogSec=2min
+EOF
+cat > /etc/systemd/user.conf.d/60-kiosk-fast-shutdown.conf <<'EOF'
+[Manager]
+DefaultTimeoutStopSec=5s
+EOF
+systemctl daemon-reload 2>/dev/null || true
+
 # GNOME's own power-key shortcut (gsd-media-keys) blanks or suspends on a short
 # press; remove it so a press does nothing at all. Locked so it can't return.
 cat > /etc/dconf/db/local.d/04-tablet-power-key <<'EOF'
