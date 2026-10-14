@@ -571,10 +571,8 @@ done
 EOF
 chmod +x "$START_SCRIPT"
 
-# Autopilot org logo for the connecting page (optional: the page hides it if missing).
-curl -fsSL "https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/main/client-brand/autopilot-logo.png" \
-  -o "$KIOSK_DIR/autopilot-logo.png" && chmod 644 "$KIOSK_DIR/autopilot-logo.png" \
-  || echo "⚠️  Could not download the Autopilot logo — connecting page shows only the Boeing logo."
+# The Autopilot logo was removed from the connecting page; drop any old copy.
+rm -f "$KIOSK_DIR/autopilot-logo.png"
 
 # --- Local "connecting" page shown until the portal answers ------------------
 # Polls the portal with a no-cors fetch (opaque response = reachable) and
@@ -596,8 +594,6 @@ cat > "$KIOSK_DIR/connecting.html" <<EOF
   <!-- client logo installed by 06_plymouth.sh; hidden if that step was skipped -->
   <div class="logos">
     <img src="file:///usr/share/plymouth/themes/client-brand/logo.png" alt="" onerror="this.style.display='none'">
-    <!-- Autopilot org logo, downloaded above; hidden if it is missing -->
-    <img src="file://$KIOSK_DIR/autopilot-logo.png" alt="" onerror="this.style.display='none'">
   </div>
   <div class="spin"></div>
   <div>Connecting to the portal…</div>

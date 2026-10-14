@@ -13,7 +13,7 @@ THEME_REPO_URL="https://raw.githubusercontent.com/CleanEconomics/ubuntuscript2/m
 STAGE="$(mktemp -d)"
 
 ok=1
-for f in "$THEME_NAME.plymouth" "$THEME_NAME.script" logo.png autopilot.png background.png spinner.png; do
+for f in "$THEME_NAME.plymouth" "$THEME_NAME.script" logo.png background.png spinner.png; do
   if ! curl -fsSL "$THEME_REPO_URL/$f" -o "$STAGE/$f"; then
     echo "⚠️  Failed to download $f"
     ok=0
@@ -43,6 +43,8 @@ case "${SPLASH_ROTATE:-0}" in
 esac
 
 sudo mkdir -p "$THEME_DIR"
+# The Autopilot logo was removed from the splash; drop any copy an older setup left.
+sudo rm -f "$THEME_DIR/autopilot.png"
 sudo cp "$STAGE"/* "$THEME_DIR"/
 rm -rf "$STAGE"
 
