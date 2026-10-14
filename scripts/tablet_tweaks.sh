@@ -123,14 +123,52 @@ cat > /etc/systemd/logind.conf.d/60-tablet-kiosk.conf <<'EOF'
 [Login]
 HandlePowerKey=ignore
 HandleSuspendKey=ignore
+HandleHibernateKey=ignore
 HandleLidSwitch=ignore
 HandleLidSwitchExternalPower=ignore
+HandleLidSwitchDocked=ignore
 IdleAction=ignore
+# GNOME normally takes over the power key from logind ("inhibits" it) and acts
+# on it itself, which on these tablets blanked/slept the screen and it never
+# came back. Make logind keep the key (and ignore it) even when inhibited.
+PowerKeyIgnoreInhibited=yes
+SuspendKeyIgnoreInhibited=yes
+HibernateKeyIgnoreInhibited=yes
 EOF
-for unit in sleep.target suspend.target hibernate.target hybrid-sleep.target; do
+for unit in sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target; do
   systemctl mask "$unit" 2>/dev/null || true
 done
-echo "✅ device can only be powered off by holding the power button (firmware)"
+# Belt and braces: systemd itself refuses every kind of sleep.
+mkdir -p /etc/systemd/sleep.conf.d
+cat > /etc/systemd/sleep.conf.d/60-tablet-kiosk.conf <<'EOF'
+[Sleep]
+AllowSuspend=no
+AllowHibernation=no
+AllowSuspendThenHibernate=no
+AllowHybridSleep=no
+EOF
+# GNOME's own power-key shortcut (gsd-media-keys) blanks or suspends on a short
+# press; remove it so a press does nothing at all. Locked so it can't return.
+cat > /etc/dconf/db/local.d/04-tablet-power-key <<'EOF'
+[org/gnome/settings-daemon/plugins/media-keys]
+power=@as []
+power-static=@as []
+suspend=@as []
+suspend-static=@as []
+hibernate=@as []
+hibernate-static=@as []
+screensaver=@as []
+screensaver-static=@as []
+EOF
+mkdir -p /etc/dconf/db/local.d/locks
+cat > /etc/dconf/db/local.d/locks/04-tablet-power-key <<'EOF'
+/org/gnome/settings-daemon/plugins/media-keys/power
+/org/gnome/settings-daemon/plugins/media-keys/power-static
+/org/gnome/settings-daemon/plugins/media-keys/suspend
+/org/gnome/settings-daemon/plugins/media-keys/suspend-static
+EOF
+dconf update 2>/dev/null || true
+echo "✅ power button press does nothing (no sleep, no blank); hold it to power off (firmware)"
 
 # --- 3. Remove the GNOME first-login welcome tour ------------------------------
 apt purge -y gnome-initial-setup 2>/dev/null || true
@@ -246,6 +284,43 @@ if [[ "${USB_AUTOSUSPEND:-0}" != "1" ]] && ! grep -q 'usbcore.autosuspend' /etc/
     echo "⚠️  Could not edit /etc/default/grub — USB autosuspend unchanged."
   fi
 fi
+
+# --- 4b1. Dock (pogo pins) and USB hot-plug ------------------------------------
+# The S101's dock connects over USB through the pogo pins. Linux runtime power
+# management can put the USB controller (xHCI) or the dock's hub to sleep, after
+# which a device plugged into the dock is never seen. usbcore.autosuspend=-1
+# (above) covers USB devices; this keeps the controllers and hubs awake too.
+# Also writes /opt/kiosk/dock-check.sh, which saves what the tablet sees
+# (docked vs. undocked) to ~/kiosk-data for troubleshooting.
+cat > /etc/udev/rules.d/71-kiosk-usb-awake.rules <<'EOF'
+# Written by tablet_tweaks.sh: keep USB controllers, hubs and devices powered so
+# devices on the pogo-pin dock are always detected.
+ACTION=="add|change", SUBSYSTEM=="pci", ATTR{class}=="0x0c03*", TEST=="power/control", ATTR{power/control}="on"
+ACTION=="add|change", SUBSYSTEM=="usb", TEST=="power/control", ATTR{power/control}="on"
+EOF
+udevadm control --reload-rules 2>/dev/null || true
+udevadm trigger --subsystem-match=pci --subsystem-match=usb --action=change 2>/dev/null || true
+mkdir -p /opt/kiosk
+cat > /opt/kiosk/dock-check.sh <<'EOF'
+#!/usr/bin/env bash
+# Save what the tablet sees on USB, for comparing docked vs. undocked.
+#   bash /opt/kiosk/dock-check.sh docked     (with the tablet in the dock)
+#   bash /opt/kiosk/dock-check.sh undocked   (out of the dock)
+tag="${1:-now}"
+out="$HOME/kiosk-data/dock-check-$tag-$(date +%Y%m%d-%H%M%S).txt"
+mkdir -p "$HOME/kiosk-data"
+{
+  echo "== $tag $(date)"; echo "== lsusb"; lsusb; echo "== lsusb -t"; lsusb -t
+  echo "== network"; nmcli device 2>/dev/null
+  echo "== input devices"; grep -E '^N: Name' /proc/bus/input/devices
+  echo "== serial"; ls -l /dev/ttyUSB* /dev/ttyACM* /dev/hidraw* 2>/dev/null
+  echo "== kernel (usb)"; sudo dmesg 2>/dev/null | grep -iE 'usb|xhci|hub|r8152|ax88|cdc|hid' | tail -60
+} > "$out" 2>&1
+echo "Saved: $out"
+cat "$out"
+EOF
+chmod 755 /opt/kiosk/dock-check.sh
+echo "✅ USB controllers/hubs kept awake for the dock; diagnostics: /opt/kiosk/dock-check.sh"
 
 # --- 4b2. Screen must come back after sitting idle ------------------------------
 # Intel graphics (the S101's i7-10510Y) use Panel Self Refresh: when the
