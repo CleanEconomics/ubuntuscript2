@@ -60,6 +60,7 @@ TABLET_SCRIPTS=(
   tablet_tweaks.sh
   10_disable_updates.sh
   11_vscode.sh
+  12_rfid.sh
 )
 
 # --------------------------------------------
